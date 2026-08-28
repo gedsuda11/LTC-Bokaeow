@@ -1204,7 +1204,7 @@ header.app-header .app-header-user .btn:hover{background:rgba(255,255,255,.3);}
     <h3>⚙️ ตั้งค่าผู้รับรองรายงาน</h3>
     <p class="muted">เพิ่มรายชื่อผู้ที่สามารถลงนามรับรองผลงานได้หลายคน แล้วเลือกว่าใครเป็น "ผู้รับรองปัจจุบัน" ที่จะแสดงในช่องลงชื่อท้ายรายงาน PDF — เปลี่ยนแปลงได้ตลอดเวลา</p>
     <div class="row">
-      <div class="field"><label>ชื่อผู้รับรองรายงาน</label><input type="text" id="reportCertifierName" placeholder="เช่น นางศศิธร ภิญญะพงษ์"></div>
+      <div class="field"><label>ชื่อผู้รับรองรายงาน</label><input type="text" id="reportCertifierName" placeholder="กรอกชื่อ-สกุลผู้รับรอง"></div>
       <div class="field"><label>ตำแหน่ง</label><input type="text" id="reportCertifierPosition" placeholder="เช่น พยาบาลวิชาชีพชำนาญการ"></div>
       <button class="btn btn-primary btn-sm" id="addReportCertifierBtn" style="align-self:flex-end;">➕ เพิ่มผู้รับรอง</button>
     </div>
@@ -1266,14 +1266,14 @@ header.app-header .app-header-user .btn:hover{background:rgba(255,255,255,.3);}
     <div class="field"><label>หมู่ที่</label>
       <select id="cgMoo">
         <option value="">-- เลือกหมู่ --</option>
-        <option value="2">หมู่ 2 บ้านโพนสว่าง</option>
-        <option value="3">หมู่ 3 บ้านดอนเชียงบาล</option>
-        <option value="6">หมู่ 6 บ้านหนองสนม</option>
-        <option value="8">หมู่ 8 บ้านทุ่งมน</option>
-        <option value="9">หมู่ 9 บ้านโคกสว่าง</option>
-        <option value="11">หมู่ 11 บ้านโนนเบ็ญ</option>
-        <option value="13">หมู่ 13 บ้านดอนเชียงบานใหญ่</option>
-        <option value="15">หมู่ 15 บ้านทุ่งมนพัฒนา</option>
+        <option value="1">หมู่ 1 บ้านบ่อแก้ว</option>
+        <option value="2">หมู่ 2 บ้านดงมะไฟ</option>
+        <option value="3">หมู่ 3 บ้านลึมบอง</option>
+        <option value="5">หมู่ 5 บ้านหว้าน</option>
+        <option value="9">หมู่ 9 บ้านท่างาม</option>
+        <option value="10">หมู่ 10 บ้านอ่างคำค้อ</option>
+        <option value="11">หมู่ 11 บ้านหว้าน</option>
+        <option value="14">หมู่ 14 บ้านบ่อแก้ว</option>
       </select>
     </div>
   </div>
@@ -2269,11 +2269,6 @@ db.ref('visitPlans').on('value', snap=>{ STATE.visitPlans = snap.val()||{}; });
 db.ref('cgTransferHistory').on('value', snap=>{ STATE.cgTransferHistory = snap.val()||{}; });
 db.ref('systemSettings/reportCertifiers').on('value', snap=>{
   STATE.reportCertifiers = snap.val() || {};
-  if(Object.keys(STATE.reportCertifiers).length === 0){
-    const defaultId = 'CERT_DEFAULT';
-    db.ref('systemSettings/reportCertifiers/'+defaultId).set({ name:'นางศศิธร ภิญญะพงษ์', position:'พยาบาลวิชาชีพชำนาญการ' });
-    db.ref('systemSettings/activeCertifierId').set(defaultId);
-  }
   renderReportCertifierTable();
 });
 db.ref('systemSettings/activeCertifierId').on('value', snap=>{
@@ -2378,6 +2373,33 @@ db.ref('systemFlags/clearedPatientData_20260828').once('value').then(snap=>{
   }
 });
 
+/* เตรียมฐานข้อมูลว่างสำหรับเริ่มใช้งานในพื้นที่ รพ.สต.บ้านบ่อแก้ว (ทำครั้งเดียว)
+   คงไว้เฉพาะโครงสร้างโปรแกรมและบัญชี Admin หลัก ซึ่ง listener ของ users จะสร้างกลับให้อัตโนมัติ */
+db.ref('systemFlags/initializedEmptyBoKaeoDatabase_20260828').once('value').then(snap=>{
+  if(!snap.exists()){
+    db.ref().update({
+      'cgs': null,
+      'elderly': null,
+      'visits': null,
+      'elderlyHistory': null,
+      'visitHistory': null,
+      'visitPlans': null,
+      'cgTransferHistory': null,
+      'equipment': null,
+      'inventory': null,
+      'repairRegistry': null,
+      'disposalRegistry': null,
+      'materialSupply': null,
+      'users': null,
+      'systemSettings/reportCertifiers': null,
+      'systemSettings/activeCertifierId': null,
+      'systemSettings/careManager': null,
+      'systemSettings/caregiverSupport': null,
+      'systemFlags/initializedEmptyBoKaeoDatabase_20260828': true
+    });
+  }
+});
+
 let dataLoadedOnce = false;
 function onDataChange(){
   renderCgSelects();
@@ -2389,48 +2411,11 @@ function onDataChange(){
   renderEquipmentTable();
   if(!dataLoadedOnce){
     dataLoadedOnce = true;
-    maybeSeedData();
     /* maybeSeedElderlyImport(); -- ปิดการนำเข้าอัตโนมัติชุดเดิม (ทะเบียน LTC ปีงบประมาณ 68) แล้ว
        เพราะได้ล้างรายชื่อผู้สูงอายุชุดนั้นออกตามคำขอ ให้ใช้ปุ่ม "นำเข้าจาก Excel" ในแท็บจัดการผู้สูงอายุแทน */
     /* fixLegacyDefaultVisitsPerMonth(); -- เลิกใช้แล้ว เพราะจำนวนครั้งเยี่ยม/เดือนคำนวณจากคะแนน ADL (Barthel) โดยตรงเสมอ
        ไม่มีการเก็บเป็นฟิลด์แยกต่างหากอีกต่อไป (ดู getElderlyVisitTarget) */
   }
-}
-
-function maybeSeedData(){
-  if(Object.keys(STATE.cgs).length>0 || Object.keys(STATE.elderly).length>0) return;
-  const now = Date.now();
-  const cgSeed = {
-    CG001:{name:'นางสาวจตุพร มะลา', moo:'1', village:'บ้านบ่อแก้ว', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG002:{name:'นางสาวะอองดาว หลักคำ', moo:'1', village:'บ้านบ่อแก้ว', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG003:{name:'นางหนูเจียง มณีวรรณ', moo:'2', village:'บ้านดงมะไฟ', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG004:{name:'นางสาวพรสวรรค์ ภูมิพัฒน์', moo:'2', village:'บ้านดงมะไฟ', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG005:{name:'นางสาวศรีประจันทร์ อุ่นวิเศษ', moo:'3', village:'บ้านลึมบอง', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG006:{name:'นางสาวพรทิพย์ อุ่นวิเศษ', moo:'3', village:'บ้านลึมบอง', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG007:{name:'นางชฎาพร พระหันธงชัย', moo:'5', village:'บ้านหว้าน', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG008:{name:'นางสาวปานใจ ปิลอง', moo:'5', village:'บ้านหว้าน', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG009:{name:'นางอุบล ศรีปะโค', moo:'9', village:'บ้านท่างาม', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG010:{name:'นางสุพรรณ สากลาง', moo:'9', village:'บ้านท่างาม', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG011:{name:'นางสุมาลี ศรชัย', moo:'10', village:'บ้านอ่างคำค้อ', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG012:{name:'นางอุไรย์ เฉลิมพงษ์', moo:'10', village:'บ้านอ่างคำค้อ', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG013:{name:'นางประภัสสร ราชโส', moo:'11', village:'บ้านหว้าน', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG014:{name:'นางหนูพร นางหัวนิล', moo:'11', village:'บ้านหว้าน', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG015:{name:'นางสาวกาญจนา เป้าปิด', moo:'14', village:'บ้านบ่อแก้ว', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG016:{name:'นางสาววาสนา แพงศรี', moo:'9', village:'บ้านท่างาม', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now},
-    CG017:{name:'นางสาวปรียาภรณ์ อินทสิทธิ์', moo:'9', village:'บ้านท่างาม', idCard:'', phone:'', houseNo:'', status:'active', createdAt:now}
-  };
-  db.ref('cgs').set(cgSeed);  
-  db.ref('systemSettings/careManager').set({
-    name:'นางใกล้รุ่ง บัวขันธ์',
-    position:'พยาบาลวิชาชีพชำนาญการ'
-  });
-  db.ref('systemSettings/caregiverSupport').set({
-    name:'นางมณีรัตนื โฉมยา',
-    moo:'9',
-    village:'บ้านท่างาม',
-    role:'อาสาบริบาล (อสบ.)'
-  });
-  toast('เริ่มต้นระบบ: สร้างข้อมูล CG จำนวน 17 คนเรียบร้อยแล้ว กรุณาเพิ่มผู้สูงอายุที่แท็บ "จัดการผู้สูงอายุ"', 'success');
 }
 
 /* =============================================================
@@ -5447,8 +5432,8 @@ function buildPdfPageHTML(elderly, cg, visitsChunk, monthLabel, yearBE){
       </div>
       <div style="width:47%;">
         <div>ลงชื่อ ..................................................... </div>
-        <div style="margin-top:4px;">( ${(STATE.reportCertifiers[STATE.activeCertifierId]||{}).name || 'นางศศิธร ภิญญะพงษ์'} )</div>
-        <div>ตำแหน่ง ${(STATE.reportCertifiers[STATE.activeCertifierId]||{}).position || 'พยาบาลวิชาชีพชำนาญการ'} (ผู้รับรองผลงาน)</div>
+        <div style="margin-top:4px;">( ${(STATE.reportCertifiers[STATE.activeCertifierId]||{}).name || '.....................................'} )</div>
+        <div>ตำแหน่ง ${(STATE.reportCertifiers[STATE.activeCertifierId]||{}).position || '.....................................'} (ผู้รับรองผลงาน)</div>
         <div style="margin-top:4px;">วันที่ ......... / ......... / .........</div>
       </div>
     </div>
