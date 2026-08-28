@@ -1827,13 +1827,13 @@ header.app-header .app-header-user .btn:hover{background:rgba(255,255,255,.3);}
    CONFIG
 ============================================================= */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBo2IF_6n4Cm2fLJtUdRtWzr8hKIXoqn9M",
-  authDomain: "cm-cg-70f3f.firebaseapp.com",
-  databaseURL: "https://cm-cg-70f3f-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "cm-cg-70f3f",
-  storageBucket: "cm-cg-70f3f.firebasestorage.app",
-  messagingSenderId: "88693843028",
-  appId: "1:88693843028:web:45428f57f2993da9c779c1"
+  apiKey: "AIzaSyDeyrGz4sZq1AgEDEbRYYEITvFGHbeS1U4",
+  authDomain: "ltc-bokaeow.firebaseapp.com",
+  databaseURL: "https://ltc-bokaeow-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ltc-bokaeow",
+  storageBucket: "ltc-bokaeow.firebasestorage.app",
+  messagingSenderId: "539045356674",
+  appId: "1:539045356674:web:995d4e7f4a35c0d5cfc09b"
 };
 const IMGBB_API_KEY = "03f39bdd85fa08d303c9aa950b3cc531";
 const FACILITY_NAME = "รพ.สต.บ้านบ่อแก้ว";
@@ -1879,9 +1879,9 @@ db.ref('.info/connected').on('value', snap=>{
 
 /* ===== ฟังก์ชันวินิจฉัยปัญหาการเชื่อมต่อ (เรียกจาก console: diagnoseFB()) ===== */
 function diagnoseFB(){
-  console.group('🔍 NSN LTC — Firebase Diagnostic');
-  console.log('Project ID:', 'cm-cg-70f3f');
-  console.log('DB URL:', 'https://cm-cg-70f3f-default-rtdb.asia-southeast1.firebasedatabase.app');
+  console.group('🔍 BKG LTC — Firebase Diagnostic');
+  console.log('Project ID:', 'ltc-bokaeow');
+  console.log('DB URL:', 'https://ltc-bokaeow-default-rtdb.asia-southeast1.firebasedatabase.app');
   console.log('Online:', navigator.onLine);
   db.ref('.info/serverTimeOffset').once('value').then(s=>{
     console.log('✅ DB reachable — server time offset:', s.val(), 'ms');
@@ -2269,17 +2269,51 @@ db.ref('systemSettings/activeCertifierId').on('value', snap=>{
   renderReportCertifierTable();
 });
 
-/* บัญชีผู้ใช้งาน: สร้างบัญชี Admin เริ่มต้นให้อัตโนมัติเมื่อยังไม่มีผู้ใช้งานในระบบเลย
-   (username: 1470900013871 / password: 05449 / นายพงศกร แป่มจำนัก) */
+/* บัญชี Admin หลักของ รพ.สต.บ้านบ่อแก้ว
+   Username: 3471201122954
+   Password: p20805531
+   ระบบจะสร้าง/ปรับบัญชีนี้ให้อัตโนมัติเมื่อเชื่อมต่อ Firebase
+   โดยไม่ลบบัญชีผู้ใช้งานอื่น */
 db.ref('users').on('value', snap=>{
   STATE.users = snap.val() || {};
-  if(Object.keys(STATE.users).length === 0){
-    db.ref('users').set({
-      U_ADMIN_SEED: { username:'1470900013871', password:'05531', displayName:'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว', idCard:'1470900013871', address:'', phone:'', role:'admin', cgCode:'', permissions: permsFromRoleTabs('admin'), createdAt: Date.now() }
+
+  const ADMIN_USERNAME = '3471201122954';
+  const ADMIN_PASSWORD = 'p20805531';
+  const ADMIN_UID = 'U_ADMIN_BOKAEO';
+  const ADMIN_PROFILE = {
+    username: ADMIN_USERNAME,
+    password: ADMIN_PASSWORD,
+    displayName: 'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว',
+    idCard: ADMIN_USERNAME,
+    address: 'รพ.สต.บ้านบ่อแก้ว ตำบลบ่อแก้ว อำเภอบ้านม่วง จังหวัดสกลนคร',
+    phone: '',
+    role: 'admin',
+    cgCode: '',
+    permissions: permsFromRoleTabs('admin'),
+    updatedAt: Date.now()
+  };
+
+  const existingAdminEntry = Object.entries(STATE.users).find(([uid,u])=>u && u.username===ADMIN_USERNAME);
+
+  if(!existingAdminEntry){
+    db.ref('users/'+ADMIN_UID).set({
+      ...ADMIN_PROFILE,
+      createdAt: Date.now()
     });
+  }else{
+    const [uid, u] = existingAdminEntry;
+    const updates = {};
+    if(u.password !== ADMIN_PASSWORD) updates.password = ADMIN_PASSWORD;
+    if(u.role !== 'admin') updates.role = 'admin';
+    if(!u.permissions) updates.permissions = permsFromRoleTabs('admin');
+    if(u.displayName !== ADMIN_PROFILE.displayName) updates.displayName = ADMIN_PROFILE.displayName;
+    if(Object.keys(updates).length){
+      updates.updatedAt = Date.now();
+      db.ref('users/'+uid).update(updates);
+    }
   }
-  /* ลบบัญชีเก่าที่เคยสร้างไว้อัตโนมัติจากฟังก์ชันที่ถูกยกเลิกไปแล้ว ให้เหลือเฉพาะบัญชี Admin เริ่มต้น
-     กับบัญชีที่มาจาก "เมนูลงทะเบียนใช้งาน" เท่านั้น:
+
+  /* ลบบัญชีเก่าที่เคยสร้างไว้อัตโนมัติจากฟังก์ชันที่ถูกยกเลิกไปแล้ว:
      - "ผู้ใช้งานทั่วไป" (TOP/TOP)
      - บัญชี CG รหัสเก่า 001-005 ที่เคยสร้างไว้ล่วงหน้า */
   const LEGACY_USERNAMES = ['TOP','001','002','003','004','005'];
@@ -2369,7 +2403,7 @@ function maybeSeedData(){
     village:'บ้านท่างาม',
     role:'อาสาบริบาล (อสบ.)'
   });
-  toast('เริ่มต้นระบบ: สร้างข้อมูล CG จำนวน 5 คนเรียบร้อยแล้ว กรุณาเพิ่มผู้สูงอายุที่แท็บ "จัดการผู้สูงอายุ"', 'success');
+  toast('เริ่มต้นระบบ: สร้างข้อมูล CG จำนวน 17 คนเรียบร้อยแล้ว กรุณาเพิ่มผู้สูงอายุที่แท็บ "จัดการผู้สูงอายุ"', 'success');
 }
 
 function maybeSeedElderlyImport(){
@@ -8723,7 +8757,7 @@ document.getElementById('diagConnBtn').addEventListener('click', async ()=>{
     const off = await db.ref('.info/serverTimeOffset').once('value');
     const ping = Date.now()-t0;
     res.innerHTML=`✅ <b>เชื่อมต่อ Firebase สำเร็จ</b><br>
-      📡 Project: cm-cg-70f3f | Region: asia-southeast1<br>
+      📡 Project: ltc-bokaeow | Region: asia-southeast1<br>
       ⚡ Ping: ${ping}ms | Server offset: ${off.val()}ms<br>
       🌐 Browser online: ${navigator.onLine ? 'ใช่' : 'ไม่ใช่'}`;
   }catch(e){
