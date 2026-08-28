@@ -2216,6 +2216,23 @@ function fillMonthYearSelects(monthSel, yearSel, opts){
    STATE
 ============================================================= */
 const STATE = { cgs:{}, elderly:{}, visits:{}, equipment:{}, inventory:{}, repairRegistry:{}, disposalRegistry:{}, materialSupply:{}, users:{}, visitPlans:{}, cgTransferHistory:{}, reportCertifiers:{}, activeCertifierId:'', selectedDates:[], drillLevel:1, drillCg:null, drillElderly:null, groupCountMembers:{'1':[],'2':[],'3':[],'4':[]} };
+const ADMIN_USERNAME = '3471201122954';
+const ADMIN_PASSWORD = '05531';
+const ADMIN_UID = 'U_ADMIN_BOKAEO';
+function getAdminProfile(){
+  return {
+    username: ADMIN_USERNAME,
+    password: ADMIN_PASSWORD,
+    displayName: 'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว',
+    idCard: ADMIN_USERNAME,
+    address: 'รพ.สต.บ้านบ่อแก้ว ตำบลบ่อแก้ว อำเภอบ้านม่วง จังหวัดสกลนคร',
+    phone: '',
+    role: 'admin',
+    cgCode: '',
+    permissions: permsFromRoleTabs('admin'),
+    updatedAt: Date.now()
+  };
+}
 const VILLAGES = [
   {moo:'1', name:'บ้านบ่อแก้ว'},
   {moo:'2', name:'บ้านดงมะไฟ'},
@@ -2284,21 +2301,7 @@ db.ref('systemSettings/activeCertifierId').on('value', snap=>{
 db.ref('users').on('value', snap=>{
   STATE.users = snap.val() || {};
 
-  const ADMIN_USERNAME = '3471201122954';
-  const ADMIN_PASSWORD = '05531';
-  const ADMIN_UID = 'U_ADMIN_BOKAEO';
-  const ADMIN_PROFILE = {
-    username: ADMIN_USERNAME,
-    password: ADMIN_PASSWORD,
-    displayName: 'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว',
-    idCard: ADMIN_USERNAME,
-    address: 'รพ.สต.บ้านบ่อแก้ว ตำบลบ่อแก้ว อำเภอบ้านม่วง จังหวัดสกลนคร',
-    phone: '',
-    role: 'admin',
-    cgCode: '',
-    permissions: permsFromRoleTabs('admin'),
-    updatedAt: Date.now()
-  };
+  const ADMIN_PROFILE = getAdminProfile();
 
   const existingAdminEntry = Object.entries(STATE.users).find(([uid,u])=>u && u.username===ADMIN_USERNAME);
 
@@ -2396,6 +2399,38 @@ db.ref('systemFlags/initializedEmptyBoKaeoDatabase_20260828').once('value').then
       'systemSettings/careManager': null,
       'systemSettings/caregiverSupport': null,
       'systemFlags/initializedEmptyBoKaeoDatabase_20260828': true
+    });
+  }
+});
+
+/* ล้างข้อมูลที่เคยคีย์จากพื้นที่เดิมทั้งหมดอีกครั้งด้วยคำสั่งชุดใหม่ (ทำครั้งเดียว)
+   บัญชี Admin บ้านบ่อแก้วจะถูกสร้างกลับอัตโนมัติหลังการล้าง */
+db.ref('systemFlags/clearedAllLegacyNongSanomDataV2_20260828').once('value').then(snap=>{
+  if(!snap.exists()){
+    db.ref().update({
+      'cgs': null,
+      'elderly': null,
+      'visits': null,
+      'elderlyHistory': null,
+      'visitHistory': null,
+      'visitPlans': null,
+      'cgTransferHistory': null,
+      'equipment': null,
+      'inventory': null,
+      'repairRegistry': null,
+      'disposalRegistry': null,
+      'materialSupply': null,
+      'users': null,
+      'systemSettings/reportCertifiers': null,
+      'systemSettings/activeCertifierId': null,
+      'systemSettings/careManager': null,
+      'systemSettings/caregiverSupport': null,
+      'systemFlags/clearedAllLegacyNongSanomDataV2_20260828': true
+    }).then(()=>{
+      const admin = getAdminProfile();
+      return db.ref('users/'+ADMIN_UID).set({...admin, createdAt:Date.now()});
+    }).catch(err=>{
+      console.error('ล้างข้อมูลเดิมหรือสร้างบัญชี Admin ไม่สำเร็จ:', err);
     });
   }
 });
@@ -2504,6 +2539,17 @@ document.getElementById('loginBtn').addEventListener('click', ()=>{
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
   if(!username || !password){ errEl.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
+  /* บัญชีฉุกเฉินของหน่วยงานต้องเข้าได้แม้ Firebase เพิ่งถูกล้างหรือยังโหลด users ไม่เสร็จ */
+  if(username === ADMIN_USERNAME && password === ADMIN_PASSWORD){
+    const admin = getAdminProfile();
+    STATE.users[ADMIN_UID] = admin;
+    loginAsUser(ADMIN_UID, admin);
+    db.ref('users/'+ADMIN_UID).update(admin).catch(err=>{
+      console.error('บันทึกบัญชี Admin ลง Firebase ไม่สำเร็จ:', err);
+      toast('เข้าสู่ระบบได้ แต่ยังบันทึกบัญชี Admin ลง Firebase ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ','error');
+    });
+    return;
+  }
   if(Object.keys(STATE.users).length === 0){
     errEl.textContent = '⚠️ ระบบยังโหลดข้อมูลผู้ใช้จากฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้าใหม่';
     errEl.style.color = '#D8503A';
