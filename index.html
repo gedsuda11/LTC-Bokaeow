@@ -392,6 +392,7 @@ header.app-header .app-header-user .btn:hover{background:rgba(255,255,255,.3);}
       <div class="login-forgot" id="loginRegisterLink">ยังไม่มีบัญชี? ลงทะเบียนที่นี่</div>
       <div class="login-forgot" id="loginPublicLink">เข้าดูข้อมูลทั่วไป (ไม่ต้องเข้าสู่ระบบ)</div>
       <div class="login-forgot" id="loginForgotLink">ลืมรหัสผ่าน / ติดต่อผู้ดูแลระบบ</div>
+      <p class="muted" style="text-align:center;font-size:10.5px;margin:12px 0 0;opacity:.75;">เวอร์ชัน 4 ต.ค. 2569 (มีข้อมูลตั้งต้น หมู่บ้าน/CG/ผู้สูงอายุ)</p>
     </div>
   </div>
 </div>
@@ -2622,6 +2623,9 @@ function maybeSeedData(){
     });
   }).catch(err=>{
     console.error('นำเข้าข้อมูลตั้งต้นไม่สำเร็จ:', err);
+    /* แจ้งให้เห็นบนหน้าจอ (ไม่ใช่แค่ใน console) เช่น Firebase Rules ไม่อนุญาตให้เขียน */
+    showDbProblem('นำเข้าข้อมูลตั้งต้น (หมู่บ้าน/CG/ผู้สูงอายุ) ไม่สำเร็จ: ' + (err.code || err.message));
+    toast('นำเข้าข้อมูลตั้งต้นไม่สำเร็จ: ' + (err.code || err.message), 'error');
     db.ref(SEED_FLAG_PATH).remove().catch(()=>{});
   });
 }
