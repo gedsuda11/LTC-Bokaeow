@@ -2270,12 +2270,17 @@ db.ref('systemSettings/activeCertifierId').on('value', snap=>{
 });
 
 /* บัญชีผู้ใช้งาน: สร้างบัญชี Admin เริ่มต้นให้อัตโนมัติเมื่อยังไม่มีผู้ใช้งานในระบบเลย
-   (username: 3471201122954 / password: 05531) */
+   (username: 3471201122954 / password: 1234) */
 db.ref('users').on('value', snap=>{
   STATE.users = snap.val() || {};
-  if(Object.keys(STATE.users).length === 0){
-    db.ref('users').set({
-      U_ADMIN_SEED: { username:'3471201122954', password:'05531', displayName:'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว', idCard:'3471201122954', address:'', phone:'', role:'admin', cgCode:'', permissions: permsFromRoleTabs('admin'), createdAt: Date.now() }
+  /* ตรวจสอบว่ามีบัญชี Admin ที่ใช้ username นี้อยู่แล้วหรือยัง — ถ้ายังไม่มี (ไม่ว่าจะเป็นเพราะฐานข้อมูลว่างเปล่า
+     หรือมีผู้ใช้อื่นอยู่ก่อนแล้วแต่ไม่มีบัญชีนี้) ให้สร้าง/ซ่อมบัญชีนี้ให้ทันที โดยไม่กระทบผู้ใช้คนอื่น */
+  const ADMIN_SEED_USERNAME = '3471201122954';
+  const ADMIN_SEED_PASSWORD = '1234';
+  const hasAdminSeed = Object.values(STATE.users).some(u=>u.username===ADMIN_SEED_USERNAME);
+  if(!hasAdminSeed){
+    db.ref('users/U_ADMIN_SEED').set({
+      username: ADMIN_SEED_USERNAME, password: ADMIN_SEED_PASSWORD, displayName:'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว', idCard: ADMIN_SEED_USERNAME, address:'', phone:'', role:'admin', cgCode:'', permissions: permsFromRoleTabs('admin'), createdAt: Date.now()
     });
   }
   /* ลบบัญชีเก่าที่เคยสร้างไว้อัตโนมัติจากฟังก์ชันที่ถูกยกเลิกไปแล้ว ให้เหลือเฉพาะบัญชี Admin เริ่มต้น
