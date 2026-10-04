@@ -2348,10 +2348,16 @@ db.ref('users').on('value', snap=>{
   if(Object.keys(STATE.users).length === 0){
     db.ref('users').set({
       U_ADMIN_SEED: { username:DEFAULT_ADMIN_USERNAME, password:DEFAULT_ADMIN_PASSWORD, displayName:'ผู้ดูแลระบบ (Admin) รพ.สต.บ้านบ่อแก้ว', idCard:'', personType:'staff', position:'ผู้ดูแลระบบ', address:'', phone:'', role:'admin', cgCode:'', permissions: permsFromRoleTabs('admin'), createdAt: Date.now() }
-    });
+    }).catch(e=>showDbProblem('สร้างบัญชี admin ไม่สำเร็จ: '+(e.code||e.message)));
   }
   renderUsersTable();
-});
+}, err=>showDbProblem('อ่านข้อมูลผู้ใช้ไม่ได้: '+(err.code||err.message)));
+function showDbProblem(msg){
+  const full = '❌ ' + msg + ' — วิธีแก้: ไปที่ Firebase Console → Realtime Database → (1) ต้องกด Create Database ให้เรียบร้อย (2) แท็บ Rules วางข้อความตามคู่มือแล้วกด Publish แล้วรีเฟรชหน้านี้';
+  const el = document.getElementById('loginError');
+  if(el){ el.style.color = '#D8503A'; el.textContent = full; }
+  console.error(full);
+}
 
 let dataLoadedOnce = false;
 function onDataChange(){
@@ -2461,7 +2467,7 @@ document.getElementById('loginBtn').addEventListener('click', ()=>{
   const password = document.getElementById('loginPassword').value;
   if(!username || !password){ errEl.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
   if(Object.keys(STATE.users).length === 0){
-    errEl.textContent = '⚠️ ระบบยังโหลดข้อมูลผู้ใช้จากฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้าใหม่';
+    errEl.textContent = '⚠️ ยังไม่มีข้อมูลผู้ใช้จากฐานข้อมูล: (1) รอสักครู่แล้วลองใหม่ (2) ตรวจอินเทอร์เน็ต (3) ตรวจว่าสร้าง Realtime Database และตั้ง Rules ที่ Firebase แล้ว (ดูคู่มือ) จากนั้นรีเฟรชหน้า';
     errEl.style.color = '#D8503A';
     return;
   }
