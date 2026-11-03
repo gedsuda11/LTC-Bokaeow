@@ -168,6 +168,9 @@ header.app-header p{margin:3px 0 0;font-size:12px;opacity:.92;}
 .adl-badge.adl-darkgreen{background:#E8F5E9;color:#1B5E20;}
 .adl-badge.adl-green{background:#E8F5E9;color:#1B5E20;}
 .adl-badge.adl-cyan{background:#E1F5FE;color:#01579B;}
+.status-tag.cgtype-normal{background:#F1E4FF;color:#55307F;}
+.status-tag.cgtype-stimulus{background:#FFF3E0;color:#B45F00;}
+.status-tag.cgtype-asb{background:#E0F4F1;color:#00695C;}
 .quota-badge{display:inline-block;padding:8px 14px;border-radius:10px;font-size:13.5px;font-weight:700;}
 .quota-badge.quota-green{background:#E8F5E9;color:#2E7D32;}
 .quota-badge.quota-red{background:#FBE9E7;color:#D8503A;}
@@ -429,6 +432,14 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
           <option value="public">บุคคลทั่วไป</option>
         </select>
       </div>
+      <div class="field" id="regCgTypeWrap" style="margin-top:10px;">
+        <label>ประเภท CG</label>
+        <select id="regCgType">
+          <option value="normal">🟣 CG ปกติ</option>
+          <option value="stimulus">💰 CG กระตุ้นเศรษฐกิจ (เยี่ยม 16 ครั้ง/เดือน)</option>
+          <option value="asb">🧑‍🤝‍🧑 อสบ. (เยี่ยม 20 ครั้ง/เดือน)</option>
+        </select>
+      </div>
       <div class="field" id="regCmPositionWrap" style="margin-top:10px;display:none;">
         <label>ตำแหน่งงานของ CM</label>
         <input type="text" id="regCmPosition" placeholder="ระบุตำแหน่งงาน">
@@ -578,6 +589,15 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
   <div class="field" id="euCgFieldWrap" style="margin-top:8px;display:none;">
     <label>เชื่อมโยงกับ CG คนไหนในทะเบียน</label>
     <select id="euCgCode"><option value="">-- ไม่เชื่อมโยง --</option></select>
+  </div>
+  <div class="field" id="euCgTypeWrap" style="margin-top:8px;display:none;">
+    <label>ประเภท CG</label>
+    <select id="euCgType">
+      <option value="normal">🟣 CG ปกติ</option>
+          <option value="stimulus">💰 CG กระตุ้นเศรษฐกิจ (เยี่ยม 16 ครั้ง/เดือน)</option>
+          <option value="asb">🧑‍🤝‍🧑 อสบ. (เยี่ยม 20 ครั้ง/เดือน)</option>
+    </select>
+    <p class="muted" style="font-size:12px;margin:4px 0 0;">ถ้าเชื่อมโยงกับ CG ในทะเบียนแล้ว การเปลี่ยนประเภทตรงนี้จะเปลี่ยนประเภทของ CG คนนั้นด้วย (มีผลกับเป้าหมายการเยี่ยมและรูปแบบรายงาน PDF)</p>
   </div>
   <p id="euError" style="color:var(--danger);font-size:12.5px;margin-top:6px;min-height:16px;"></p>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('editUserModal')">ยกเลิก</button><button class="btn btn-primary" id="euSaveBtn">บันทึก</button></div>
@@ -922,6 +942,12 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     <div class="row" style="justify-content:space-between;">
       <h3 style="margin:0;">รายชื่อผู้ดูแล (CG)</h3>
       <div class="row" style="gap:8px;">
+        <select id="cgTypeFilter" style="width:auto;min-width:150px;">
+          <option value="">ประเภท: ทั้งหมด</option>
+          <option value="normal">🟣 CG ปกติ</option>
+          <option value="stimulus">💰 CG กระตุ้นเศรษฐกิจ</option>
+          <option value="asb">🧑‍🤝‍🧑 อสบ.</option>
+        </select>
         <select id="cgStatusFilter" style="width:auto;min-width:150px;">
           <option value="">สถานะ: ทั้งหมด</option>
           <option value="active">🟢 ปฏิบัติงาน</option>
@@ -933,7 +959,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
       </div>
     </div>
     <div id="cgStatusSummary" class="muted" style="margin-top:8px;font-size:13px;"></div>
-    <div style="overflow-x:auto;margin-top:10px;"><table style="min-width:720px;"><thead><tr><th>รหัส</th><th>ชื่อ</th><th>เลขบัตรประชาชน</th><th>เบอร์โทร</th><th>หมู่</th><th>สถานะ</th><th>ผู้สูงอายุ</th><th></th></tr></thead>
+    <div style="overflow-x:auto;margin-top:10px;"><table style="min-width:820px;"><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>เลขบัตรประชาชน</th><th>เบอร์โทร</th><th>หมู่</th><th>สถานะ</th><th>ผู้สูงอายุ</th><th></th></tr></thead>
     <tbody id="cgTable"></tbody></table></div>
   </div>
 </section>
@@ -1008,7 +1034,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
   <div class="card">
     <div class="row">
       <div class="field"><label>กรองตาม CG</label><select id="filterElderlyCg"><option value="">ทั้งหมด</option></select></div>
-      <div class="field"><label>กรองตามโหมด PDF</label><select id="filterElderlyMode"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="obt">อบต.</option></select></div>
+      <div class="field" style="display:none;"><label>กรองตามโหมด PDF</label><select id="filterElderlyMode"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="obt">อบต.</option></select></div>
       <button class="btn btn-danger btn-sm" id="bulkDeleteElderlyBtn" style="align-self:flex-end;">🗑 ลบที่เลือก (<span id="bulkDeleteCount">0</span>)</button>
       <button class="btn btn-primary btn-sm" id="addElderlyBtn" style="align-self:flex-end;">+ เพิ่มผู้สูงอายุ</button>
     </div>
@@ -1115,7 +1141,12 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
       <div class="field"><label>ปี พ.ศ.</label><select id="pdfYear"></select></div>
       <div class="field"><label>กรอง CG (ถ้าต้องการ)</label><select id="pdfCgFilter"><option value="">ทุก CG</option></select></div>
     </div>
-    <p class="muted" style="margin-top:6px;">1 หน้ากระดาษ A4 จะรวมการเยี่ยมของผู้สูงอายุคนเดียวกันสูงสุด 4 ครั้ง พร้อมสรุปรายงาน และช่องลงชื่อรับรองท้ายหน้า</p>
+    <div class="muted" style="margin-top:6px;line-height:1.7;">
+      รูปแบบหน้ากระดาษ A4 แยกตามประเภทของ CG พร้อมสรุปรายงานและช่องลงชื่อรับรองท้ายหน้า:<br>
+      🟣 <b>CG ปกติ</b> — รวมการเยี่ยมของผู้สูงอายุคนเดียวกันสูงสุด 4 ครั้ง/หน้า (จัดภาพให้สมดุลทุกหน้า เช่น 5 ครั้ง = 3+2)<br>
+      💰 <b>CG กระตุ้นเศรษฐกิจ</b> — เยี่ยมรวม 16 ครั้ง/เดือน ออกรายงาน 8 ภาพ/หน้า<br>
+      🧑‍🤝‍🧑 <b>อสบ.</b> — เยี่ยมรวม 20 ครั้ง/เดือน ออกรายงาน 10 ภาพ/หน้า
+    </div>
     <button class="btn btn-primary" id="generatePdfBtn" style="margin-top:12px;">📄 ออกรายงาน</button>
     <div class="upload-progress" id="pdfProgress"></div>
   </div>
@@ -1333,6 +1364,13 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
       <select id="cgMoo"><option value="">-- เลือกหมู่ --</option></select>
     </div>
   </div>
+  <div class="field" style="margin-top:8px;"><label>ประเภท CG</label>
+    <select id="cgType">
+      <option value="normal">🟣 CG ปกติ — เยี่ยมตามเกณฑ์ผู้สูงอายุแต่ละคน</option>
+      <option value="stimulus">💰 CG กระตุ้นเศรษฐกิจ — เยี่ยม 16 ครั้ง/เดือน (รายงาน 8 ภาพ/หน้า)</option>
+      <option value="asb">🧑‍🤝‍🧑 อสบ. — เยี่ยม 20 ครั้ง/เดือน (รายงาน 10 ภาพ/หน้า)</option>
+    </select>
+  </div>
   <div class="field" style="margin-top:8px;"><label>สถานะการปฏิบัติงาน</label>
     <select id="cgStatus">
       <option value="active">🟢 ปฏิบัติงาน</option>
@@ -1490,7 +1528,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     <div class="info-box" id="taiResultBox" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fff;border:1px solid var(--border);font-size:13px;">กรุณาเลือกให้ครบทุกข้อเพื่อสรุปผล TAI</div>
   </div>
   <div class="row" style="margin-top:8px;">
-    <div class="field"><label>โหมด PDF</label><select id="elderlyPdfMode"><option value="normal">ปกติ (normal)</option><option value="obt">อบต. (obt)</option></select></div>
+    <div class="field" style="display:none;"><label>โหมด PDF</label><select id="elderlyPdfMode"><option value="normal">ปกติ (normal)</option><option value="obt">อบต. (obt)</option></select></div>
   </div>
   <div class="row" style="margin-top:8px;">
     <div class="field"><label>ชื่อ อสม. ใกล้บ้าน</label><input type="text" id="elderlyVhvName"></div>
@@ -2105,6 +2143,8 @@ function getElderlyVisitTarget(e){
     if(!isNaN(manual)) return manual;
   }
   const g = getElderlyLtcGroup(e);
+  const share = cgShareTarget(e);   /* CG กระตุ้นเศรษฐกิจ/อสบ. → ส่วนแบ่งของเป้าหมายรวม CG */
+  if(share !== null) return share;
   return g ? g.visits : 1;
 }
 
@@ -2369,6 +2409,40 @@ function isCgActive(code){ return cgStatusOf(STATE.cgs[code]) === 'active'; }
 function cgStatusSuffix(cg){ const s = cgStatusOf(cg); return s === 'active' ? '' : ' ('+CG_STATUS[s].label+')'; }
 function cgDisplayName(code){ const cg = STATE.cgs[code]; return cg ? (cg.name||code) + cgStatusSuffix(cg) : (code||'-'); }
 function activeCgCodes(){ return Object.keys(STATE.cgs).filter(isCgActive).sort(); }
+
+/* ---- ประเภทของ CG ----
+   normal   = CG ปกติ: เยี่ยมตามเกณฑ์ ADL ของผู้สูงอายุแต่ละคน (เหมือนเดิม) รายงาน PDF คนละหน้า (สูงสุด 4 ครั้ง/หน้า)
+   stimulus = CG กระตุ้นเศรษฐกิจ: เยี่ยมรวม 16 ครั้ง/เดือน (นับรวมทุกผู้สูงอายุของ CG) รายงาน PDF 8 ภาพ/หน้า A4
+   asb      = อสบ.: เยี่ยมรวม 20 ครั้ง/เดือน (นับรวมทุกผู้สูงอายุของ CG) รายงาน PDF 10 ภาพ/หน้า A4 */
+const CG_TYPES = {
+  normal:   { label:'CG ปกติ',            short:'CG ปกติ',  icon:'🟣', monthly:null, perPage:4  },
+  stimulus: { label:'CG กระตุ้นเศรษฐกิจ', short:'กระตุ้นเศรษฐกิจ', icon:'💰', monthly:16,   perPage:8  },
+  asb:      { label:'อสบ.',               short:'อสบ.',     icon:'🧑‍🤝‍🧑', monthly:20,   perPage:10 }
+};
+function cgTypeOf(cg){ return (cg && CG_TYPES[cg.type]) ? cg.type : 'normal'; }
+function cgTypeInfo(code){ return CG_TYPES[cgTypeOf(STATE.cgs[code])]; }
+function cgMonthlyTarget(code){ return cgTypeInfo(code).monthly; }   /* null = CG ปกติ (ใช้เกณฑ์รายคน) */
+function cgTypeSuffix(cg){ const t = cgTypeOf(cg); return t==='normal' ? '' : ' ['+CG_TYPES[t].short+']'; }
+function cgTypeTag(cg){
+  const t = cgTypeOf(cg), info = CG_TYPES[t];
+  return `<span class="status-tag cgtype-${t}">${info.icon} ${info.label}</span>`;
+}
+/* จำนวนครั้งที่ CG คนนี้เยี่ยมในเดือน/ปี (นับรวมทุกผู้สูงอายุ) */
+function cgVisitCountInMonth(code, m, yBE){
+  return visitsInMonth(m,yBE).filter(([id,v])=>v.cgCode===code).length;
+}
+/* CG กระตุ้นเศรษฐกิจ/อสบ.: แบ่งเป้าหมายรวมของ CG ให้ผู้สูงอายุแต่ละคนโดยประมาณ (ใช้แนะนำตอนวางแผนเยี่ยม)
+   ส่วนการตรวจว่าครบเกณฑ์ ใช้ยอดรวมของ CG ไม่ได้ตรวจรายคน */
+function cgShareTarget(e){
+  if(!e) return null;
+  const t = cgMonthlyTarget(e.cgCode);
+  if(!t) return null;
+  const ids = Object.keys(STATE.elderly).filter(id=>STATE.elderly[id].cgCode===e.cgCode && STATE.elderly[id].status!=='discharged').sort();
+  const n = ids.length;
+  if(!n) return t;
+  const idx = ids.findIndex(id=>STATE.elderly[id]===e);
+  return Math.floor(t/n) + ((idx>=0 && idx < t%n) ? 1 : 0);
+}
 db.ref('cgs').on('value', snap=>{ STATE.cgs = snap.val()||{}; onDataChange(); });
 db.ref('elderly').on('value', snap=>{ STATE.elderly = snap.val()||{}; onDataChange(); });
 db.ref('visits').on('value', snap=>{ STATE.visits = snap.val()||{}; onDataChange(); });
@@ -2629,6 +2703,7 @@ renderRegDistrictOptions();
 document.getElementById('regPersonType').addEventListener('change', toggleRegPersonTypeFields);
 function toggleRegPersonTypeFields(){
   const pt = document.getElementById('regPersonType').value;
+  document.getElementById('regCgTypeWrap').style.display = (pt==='cg') ? 'block' : 'none';
   document.getElementById('regCmPositionWrap').style.display = (pt==='cm') ? 'block' : 'none';
   document.getElementById('regStaffPositionWrap').style.display = (pt==='staff') ? 'block' : 'none';
 }
@@ -2639,6 +2714,7 @@ document.getElementById('loginRegisterLink').addEventListener('click', ()=>{
   document.getElementById('registerOverlay').style.display = 'flex';
   document.getElementById('regFullName').value = '';
   document.getElementById('regPersonType').value = 'cg';
+  document.getElementById('regCgType').value = 'normal';
   document.getElementById('regCmPosition').value = '';
   document.getElementById('regIdCard').value = '';
   document.getElementById('regHouseNo').value = '';
@@ -2688,6 +2764,7 @@ document.getElementById('regSubmitBtn').addEventListener('click', ()=>{
   const newUser = {
     username: idCard, password, displayName: fullName,
     idCard, personType, position,
+    cgType: personType==='cg' ? document.getElementById('regCgType').value : '',
     houseNo, moo: village, subdistrict, district, province, address,
     phone, role: 'unassigned', cgCode: '',
     permissions: permsFromRoleTabs('unassigned'), createdAt: Date.now()
@@ -2708,16 +2785,22 @@ document.getElementById('regSubmitBtn').addEventListener('click', ()=>{
 });
 
 /* ---- แท็บ "ผู้ใช้งาน" (admin เท่านั้น): ตาราง + แก้ไข/กำหนดบทบาท + สิทธิ์ + รีเซ็ตรหัสผ่าน + ลบ ---- */
+/* ประเภท CG ของผู้ใช้: ถ้าเชื่อมกับ CG ในทะเบียนแล้วใช้ประเภทของ CG นั้น ไม่เช่นนั้นใช้ที่เลือกตอนสมัคร */
+function userCgTypeOf(u){
+  if(u && u.cgCode && STATE.cgs[u.cgCode]) return cgTypeOf(STATE.cgs[u.cgCode]);
+  return (u && CG_TYPES[u.cgType]) ? u.cgType : 'normal';
+}
 function renderUsersTable(){
   const tbody = document.getElementById('usersTable');
   if(!tbody) return;
   const PERSON_TYPE_LABELS = { cg:'CG', cm:'CM', staff:'เจ้าหน้าที่ รพ.สต.', public:'บุคคลทั่วไป' };
+  const userCgTypeLabel = u => (u.personType==='cg' || u.role==='cg') ? ' — '+CG_TYPES[userCgTypeOf(u)].label : '';
   const rows = Object.entries(STATE.users).sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0)).map(([uid,u])=>{
     const cgName = (u.cgCode && STATE.cgs[u.cgCode]) ? STATE.cgs[u.cgCode].name : '-';
     const dateLabel = u.createdAt ? formatThaiDate(new Date(u.createdAt).toISOString().slice(0,10)) : '-';
     const roleLabelText = ROLE_LABELS[u.role] || u.role || 'ยังไม่กำหนดบทบาท';
     const personTypeText = u.personType ? (PERSON_TYPE_LABELS[u.personType]||u.personType) : '-';
-    const personTypeLabel = u.position ? `${personTypeText} (${u.position})` : personTypeText;
+    const personTypeLabel = (u.position ? `${personTypeText} (${u.position})` : personTypeText) + userCgTypeLabel(u);
     const permBtn = (u.role === 'admin')
       ? '<span class="muted" style="font-size:12px;">เข้าถึงได้ทุกฟังก์ชัน</span>'
       : `<button class="btn btn-ghost btn-sm" onclick="openUserPermissions('${uid}')">🔧 สิทธิ์การใช้งาน</button>`;
@@ -2763,6 +2846,7 @@ function openEditUser(uid){
   document.getElementById('euError').textContent = '';
   renderEuCgOptions();
   document.getElementById('euCgCode').value = u.cgCode||'';
+  document.getElementById('euCgType').value = userCgTypeOf(u);
   toggleEuCgFieldWrap();
   openModal('editUserModal');
 }
@@ -2770,13 +2854,20 @@ function renderEuCgOptions(){
   const sel = document.getElementById('euCgCode');
   const cur = sel.value;
   sel.innerHTML = '<option value="">-- ไม่เชื่อมโยง --</option>' +
-    Object.keys(STATE.cgs).sort().map(code=>`<option value="${code}">${code} - ${escHtml(STATE.cgs[code].name)}${cgStatusSuffix(STATE.cgs[code])}</option>`).join('');
+    Object.keys(STATE.cgs).sort().map(code=>`<option value="${code}">${code} - ${escHtml(STATE.cgs[code].name)}${cgStatusSuffix(STATE.cgs[code])}${cgTypeSuffix(STATE.cgs[code])}</option>`).join('');
   sel.value = cur;
 }
 document.getElementById('euRole').addEventListener('change', toggleEuCgFieldWrap);
 function toggleEuCgFieldWrap(){
-  document.getElementById('euCgFieldWrap').style.display = (document.getElementById('euRole').value==='cg') ? 'block' : 'none';
+  const isCg = document.getElementById('euRole').value==='cg';
+  document.getElementById('euCgFieldWrap').style.display = isCg ? 'block' : 'none';
+  document.getElementById('euCgTypeWrap').style.display = isCg ? 'block' : 'none';
 }
+/* เลือก CG ในทะเบียน → แสดงประเภทปัจจุบันของ CG นั้น */
+document.getElementById('euCgCode').addEventListener('change', ()=>{
+  const code = document.getElementById('euCgCode').value;
+  if(code && STATE.cgs[code]) document.getElementById('euCgType').value = cgTypeOf(STATE.cgs[code]);
+});
 document.getElementById('euSaveBtn').addEventListener('click', ()=>{
   const uid = document.getElementById('euUserId').value;
   const displayName = document.getElementById('euDisplayName').value.trim();
@@ -2790,10 +2881,15 @@ document.getElementById('euSaveBtn').addEventListener('click', ()=>{
   if(u && u.role==='admin' && role!=='admin' && Object.values(STATE.users).filter(x=>x.role==='admin').length<=1){ errEl.textContent='ต้องมี Admin อย่างน้อย 1 คนในระบบ ไม่สามารถเปลี่ยนบทบาท Admin คนสุดท้ายได้'; return; }
   const roleChanged = u && u.role !== role;
   const updates = {
-    displayName, address, phone, role, cgCode: role==='cg' ? cgCode : ''
+    displayName, address, phone, role, cgCode: role==='cg' ? cgCode : '',
+    cgType: role==='cg' ? document.getElementById('euCgType').value : ''
   };
   /* ถ้าเปลี่ยนบทบาท และยังไม่เคยตั้งสิทธิ์แบบละเอียดไว้ด้วยตัวเอง ให้รีเซ็ตสิทธิ์เริ่มต้นตามบทบาทใหม่ */
   if(roleChanged){ updates.permissions = permsFromRoleTabs(role); }
+  /* เชื่อมกับ CG ในทะเบียนแล้ว → อัปเดตประเภทของ CG นั้นด้วย เพื่อให้เป้าหมายการเยี่ยมและรายงานตรงกัน */
+  if(role==='cg' && cgCode && STATE.cgs[cgCode] && cgTypeOf(STATE.cgs[cgCode]) !== updates.cgType){
+    db.ref('cgs/'+cgCode+'/type').set(updates.cgType);
+  }
   db.ref('users/'+uid).update(updates).then(()=>{
     toast('บันทึกข้อมูลผู้ใช้งานสำเร็จ','success');
     closeModal('editUserModal');
@@ -2895,7 +2991,7 @@ document.getElementById('cpSaveBtn').addEventListener('click', ()=>{
 ============================================================= */
 function renderCgSelects(){
   const allCodes = Object.keys(STATE.cgs).sort();
-  const mkOpts = (codes, withCode)=>codes.map(code=>`<option value="${code}">${withCode ? code+' - ' : ''}${escHtml(STATE.cgs[code].name)}${cgStatusSuffix(STATE.cgs[code])}</option>`).join('');
+  const mkOpts = (codes, withCode)=>codes.map(code=>`<option value="${code}">${withCode ? code+' - ' : ''}${escHtml(STATE.cgs[code].name)}${cgStatusSuffix(STATE.cgs[code])}${cgTypeSuffix(STATE.cgs[code])}</option>`).join('');
   const opts = mkOpts(allCodes, true);
   const optsNoCode = mkOpts(allCodes, false);
   ['elderlyCg','pdfCgFilter','filterElderlyCg','elderlyReportCgFilter','recManageCg','allElderlyReportCgFilter','indivReportCgFilter'].forEach(id=>{
@@ -3032,6 +3128,12 @@ document.getElementById('recAdlScore').addEventListener('input', renderRecHealth
 document.getElementById('recHasConfusion').addEventListener('change', renderRecHealthStatusBox);
 document.getElementById('recIsEndOfLife').addEventListener('change', renderRecHealthStatusBox);
 
+function recCgQuotaText(e){
+  const code = document.getElementById('recCg').value || e.cgCode;
+  const mt = cgMonthlyTarget(code);
+  if(mt) return `${CG_TYPES[cgTypeOf(STATE.cgs[code])].label}: เยี่ยมรวม ${mt} ครั้ง/เดือน`;
+  return `เยี่ยม ${getElderlyVisitTarget(e)} ครั้ง/เดือน`;
+}
 function renderRecInfoCard(){
   const id = document.getElementById('recElderly').value;
   const box = document.getElementById('recInfoCard');
@@ -3040,11 +3142,11 @@ function renderRecInfoCard(){
   const info = getAdlBarthelInfo(e);
   const colorInfo = getAdlColorInfo(e);
   const adlText = info ? `${info.group} (คะแนน ${e.adlScore})` : 'ยังไม่มีคะแนน ADL';
-  box.innerHTML = `${colorInfo ? `<span class="adl-dot adl-${colorInfo.cls}"></span>` : ''}อายุ ${e.age||'-'} ปี | ${adlText} | เยี่ยม ${getElderlyVisitTarget(e)} ครั้ง/เดือน | โหมด PDF: <span class="badge ${e.pdfMode}">${e.pdfMode==='obt'?'อบต.':'ปกติ'}</span>`;
+  box.innerHTML = `${colorInfo ? `<span class="adl-dot adl-${colorInfo.cls}"></span>` : ''}อายุ ${e.age||'-'} ปี | ${adlText} | ${recCgQuotaText(e)}`;
   renderRecQuotaBadge();
   renderRecAdlAssessment();
 }
-document.getElementById('recCg').addEventListener('change', renderRecElderlyOptions);
+document.getElementById('recCg').addEventListener('change', ()=>{ renderRecElderlyOptions(); renderRecQuotaBadge(); });
 
 /* ป้ายสถานะจำนวนครั้งที่ต้องเยี่ยม/เยี่ยมแล้ว/คงเหลือ ของผู้สูงอายุที่เลือก ในเดือน/ปีที่เลือก
    เกณฑ์สี: ครบตามเป้าหมาย = เขียว | <25% = แดง | 25-49% = ส้ม | 50-74% = เหลือง | >=75% = ฟ้า */
@@ -3058,9 +3160,11 @@ function renderRecQuotaBadge(){
     return;
   }
   const e = STATE.elderly[id];
-  const required = getElderlyVisitTarget(e);
   const m = parseInt(recMonthSel.value,10), yBE = parseInt(recYearSel.value,10);
-  const visited = visitsInMonth(m,yBE).filter(([vid,v])=>v.elderlyId===id).length;
+  const quotaCg = document.getElementById('recCg').value || e.cgCode;
+  const cgTarget = cgMonthlyTarget(quotaCg);   /* CG กระตุ้นเศรษฐกิจ/อสบ. → นับรวมทั้ง CG */
+  const required = cgTarget || getElderlyVisitTarget(e);
+  const visited = cgTarget ? cgVisitCountInMonth(quotaCg,m,yBE) : visitsInMonth(m,yBE).filter(([vid,v])=>v.elderlyId===id).length;
   const remaining = Math.max(required - visited, 0);
   const percent = required>0 ? (visited/required*100) : 0;
   let cls, icon;
@@ -3070,7 +3174,7 @@ function renderRecQuotaBadge(){
   else if(percent >= 25){ cls='quota-orange'; icon='🟠'; }
   else{ cls='quota-red'; icon='🔴'; }
   badge.className = 'quota-badge ' + cls;
-  badge.textContent = `${icon} ต้องเยี่ยม ${required} ครั้ง/เดือน | เยี่ยมแล้ว ${visited} ครั้ง | คงเหลือ ${remaining} ครั้ง`;
+  badge.textContent = `${icon} ${cgTarget ? CG_TYPES[cgTypeOf(STATE.cgs[quotaCg])].label+' (รวมทุกผู้สูงอายุของ CG) — ' : ''}ต้องเยี่ยม ${required} ครั้ง/เดือน | เยี่ยมแล้ว ${visited} ครั้ง | คงเหลือ ${remaining} ครั้ง`;
 }
 
 /* =============================================================
@@ -3119,7 +3223,9 @@ function renderDashboard(){
     const myCode = CURRENT_USER.cgCode;
     const myElderlyIds = elderlyIds.filter(id=>STATE.elderly[id].cgCode===myCode);
     const myVisitedIds = myElderlyIds.filter(id=>monthVisits.some(([vid,v])=>v.elderlyId===id && v.cgCode===myCode));
-    const myMetCount = myElderlyIds.filter(id=>{
+    const myCgTarget = cgMonthlyTarget(myCode);   /* CG กระตุ้นเศรษฐกิจ/อสบ. → เทียบยอดรวมของ CG */
+    const myCgTotal = monthVisits.filter(([vid,v])=>v.cgCode===myCode).length;
+    const myMetCount = myCgTarget ? 0 : myElderlyIds.filter(id=>{
       const target = getElderlyVisitTarget(STATE.elderly[id]);
       const cnt = monthVisits.filter(([vid,v])=>v.elderlyId===id && v.cgCode===myCode).length;
       return cnt >= target;
@@ -3128,7 +3234,7 @@ function renderDashboard(){
       <div class="stat stat-info"><b>${myElderlyIds.length}</b><span>ผู้สูงอายุในความดูแล</span></div>
       <div class="stat stat-success"><b>${myVisitedIds.length}</b><span>เยี่ยมแล้ว (เดือนนี้)</span></div>
       <div class="stat stat-danger"><b>${myElderlyIds.length - myVisitedIds.length}</b><span>ยังไม่ได้เยี่ยม</span></div>
-      <div class="stat stat-purple"><b>${myMetCount}/${myElderlyIds.length}</b><span>ครบตามเกณฑ์</span></div>
+      <div class="stat stat-purple">${myCgTarget ? `<b>${myCgTotal}/${myCgTarget}</b><span>ครั้งตามเป้าหมาย (${CG_TYPES[cgTypeOf(STATE.cgs[myCode])].short})</span>` : `<b>${myMetCount}/${myElderlyIds.length}</b><span>ครบตามเกณฑ์</span>`}</div>
     `;
     const listHtml = myElderlyIds.map(id=>{
       const e = STATE.elderly[id];
@@ -3137,7 +3243,7 @@ function renderDashboard(){
       const met = cnt >= target;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
         <span>${e.name}</span>
-        <span class="status-tag ${met?'approved':'disabled'}">${cnt}/${target} ครั้ง</span>
+        ${myCgTarget ? `<span class="status-tag approved">เยี่ยม ${cnt} ครั้ง</span>` : `<span class="status-tag ${met?'approved':'disabled'}">${cnt}/${target} ครั้ง</span>`}
       </div>`;
     }).join('');
     document.getElementById('myCgElderlyList').innerHTML = listHtml || '<p class="muted">ไม่มีผู้สูงอายุในความดูแล</p>';
@@ -3157,12 +3263,18 @@ function renderDashboard(){
       const cnt = monthVisits.filter(([vid,v])=>v.elderlyId===id && v.cgCode===code).length;
       return cnt >= target;
     }).length;
-    const quotaBadge = elderlyOfCg.length === 0
+    const cgTarget = cgMonthlyTarget(code);
+    const cgTotal = monthVisits.filter(([vid,v])=>v.cgCode===code).length;
+    const quotaBadge = cgTarget
+      ? (cgTotal >= cgTarget
+          ? `<span class="status-tag approved">✅ ครบ ${cgTotal}/${cgTarget} ครั้ง</span>`
+          : `<span class="status-tag disabled">⚠️ ยังไม่ครบ (${cgTotal}/${cgTarget} ครั้ง)</span>`)
+      : elderlyOfCg.length === 0
       ? '<span class="muted">-</span>'
       : (metCount === elderlyOfCg.length
         ? `<span class="status-tag approved">✅ เยี่ยมครบตามเกณฑ์</span>`
         : `<span class="status-tag disabled">⚠️ ยังไม่ครบ (${metCount}/${elderlyOfCg.length} คน)</span>`);
-    return `<tr><td>${cg.name}${isCgActive(code) ? '' : ` <span class="status-tag ${cgStatusOf(cg)}">${CG_STATUS[cgStatusOf(cg)].label}</span>`}</td><td>${elderlyOfCg.length}</td><td>${visitedOfCg.length}</td>
+    return `<tr><td>${cg.name}${cgTypeOf(cg)!=='normal' ? ` <span class="status-tag cgtype-${cgTypeOf(cg)}">${CG_TYPES[cgTypeOf(cg)].short}</span>` : ''}${isCgActive(code) ? '' : ` <span class="status-tag ${cgStatusOf(cg)}">${CG_STATUS[cgStatusOf(cg)].label}</span>`}</td><td>${elderlyOfCg.length}</td><td>${visitedOfCg.length}</td>
       <td><div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div><span class="muted">${pct}%</span></td>
       <td>${quotaBadge}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openCgVisitStatus('${code}')">👁 ดูรายชื่อ</button></td></tr>`;
@@ -3459,6 +3571,7 @@ function openCgVisitStatus(cgCode){
   const cg = STATE.cgs[cgCode];
   document.getElementById('cgVisitStatusTitle').textContent = `รายชื่อผู้สูงอายุของ ${cg ? cg.name : cgCode}`;
   const elderlyIds = Object.keys(STATE.elderly).filter(id=>STATE.elderly[id].cgCode===cgCode && STATE.elderly[id].status!=='discharged').sort();
+  const cgTargetTotal = cgMonthlyTarget(cgCode);
   const listHtml = elderlyIds.map(id=>{
     const e = STATE.elderly[id];
     const target = getElderlyVisitTarget(e);
@@ -3466,12 +3579,20 @@ function openCgVisitStatus(cgCode){
        เพื่อให้ผลตรงกับความเป็นจริงแม้ผู้สูงอายุคนนั้นจะเคยถูกย้าย CG มาระหว่างเดือน */
     const count = monthVisits.filter(([vid,v])=>v.elderlyId===id && v.cgCode===cgCode).length;
     const met = count >= target;
+    if(cgTargetTotal) return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid #eee;border-radius:8px;gap:10px;">
+      <div><b>${e.name}</b><br><span class="muted" style="font-size:12px;">เยี่ยมแล้ว ${count} ครั้ง</span></div>
+    </div>`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid #eee;border-radius:8px;gap:10px;">
       <div><b>${e.name}</b><br><span class="muted" style="font-size:12px;">เยี่ยมแล้ว ${count}/${target} ครั้ง</span></div>
       <span class="status-tag ${met ? 'approved' : 'disabled'}">${met ? 'เยี่ยมครบตามเกณฑ์' : 'ยังไม่ครบเกณฑ์'}</span>
     </div>`;
   }).join('');
-  document.getElementById('cgVisitStatusList').innerHTML = listHtml || '<p class="muted">ไม่มีผู้สูงอายุในความดูแลของ CG นี้</p>';
+  const cgTotalVisits = monthVisits.filter(([vid,v])=>v.cgCode===cgCode).length;
+  const cgSummaryHtml = cgTargetTotal ? `<div style="padding:9px 12px;border-radius:8px;background:#F8F0FF;margin-bottom:8px;font-size:13px;">
+      ${cgTypeTag(cg)} &nbsp; เยี่ยมรวม <b>${cgTotalVisits}/${cgTargetTotal}</b> ครั้ง/เดือน
+      <span class="status-tag ${cgTotalVisits>=cgTargetTotal?'approved':'disabled'}" style="margin-left:6px;">${cgTotalVisits>=cgTargetTotal?'ครบตามเป้าหมาย':'ยังไม่ครบ ขาดอีก '+(cgTargetTotal-cgTotalVisits)+' ครั้ง'}</span>
+    </div>` : '';
+  document.getElementById('cgVisitStatusList').innerHTML = cgSummaryHtml + listHtml || '<p class="muted">ไม่มีผู้สูงอายุในความดูแลของ CG นี้</p>';
   openModal('cgVisitStatusModal');
 }
 
@@ -3660,11 +3781,13 @@ document.getElementById('openCalendarBtn').addEventListener('click', ()=>{
   const y = yBE - 543;
   const daysInMonth = new Date(y, m, 0).getDate();
   const firstDow = new Date(y, m-1, 1).getDay();
-  const required = getElderlyVisitTarget(e);
-  const visited = visitsInMonth(m,yBE).filter(([vid,v])=>v.elderlyId===elderlyId).length;
+  const hintCg = document.getElementById('recCg').value || e.cgCode;
+  const hintCgTarget = cgMonthlyTarget(hintCg);
+  const required = hintCgTarget || getElderlyVisitTarget(e);
+  const visited = hintCgTarget ? cgVisitCountInMonth(hintCg,m,yBE) : visitsInMonth(m,yBE).filter(([vid,v])=>v.elderlyId===elderlyId).length;
   const remaining = Math.max(required - visited, 0);
   document.getElementById('calendarHint').textContent = remaining>0
-    ? `แนะนำให้เลือก ${remaining} วัน (คงเหลือจากเป้าหมาย ${required} ครั้ง/เดือน) - ${TH_MONTHS_FULL[m-1]} ${yBE}`
+    ? `แนะนำให้เลือก ${remaining} วัน (คงเหลือจากเป้าหมาย ${required} ครั้ง/เดือน${hintCgTarget?' รวมทุกผู้สูงอายุของ CG':''}) - ${TH_MONTHS_FULL[m-1]} ${yBE}`
     : `เยี่ยมครบตามเป้าหมาย ${required} ครั้ง/เดือนแล้ว แต่ยังเลือกวันที่เพิ่มได้หากต้องการ - ${TH_MONTHS_FULL[m-1]} ${yBE}`;
   const grid = document.getElementById('calendarGrid');
   let html = TH_DOW.map(d=>`<div class="dow">${d}</div>`).join('');
@@ -4066,9 +4189,12 @@ function renderCgTable(){
   const filter = filterEl ? filterEl.value : '';
   const counts = { active:0, suspended:0, resigned:0 };
   Object.values(STATE.cgs).forEach(c=>{ counts[cgStatusOf(c)]++; });
+  const typeFilter = (document.getElementById('cgTypeFilter')||{}).value || '';
+  const typeCounts = { normal:0, stimulus:0, asb:0 };
+  Object.values(STATE.cgs).forEach(c=>{ typeCounts[cgTypeOf(c)]++; });
   const sumEl = document.getElementById('cgStatusSummary');
-  if(sumEl) sumEl.innerHTML = `ทั้งหมด ${Object.keys(STATE.cgs).length} คน &nbsp;|&nbsp; 🟢 ปฏิบัติงาน <b>${counts.active}</b> &nbsp;|&nbsp; 🟠 หยุดปฏิบัติงาน <b>${counts.suspended}</b> &nbsp;|&nbsp; 🔴 ลาออก <b>${counts.resigned}</b>`;
-  const rows = Object.keys(STATE.cgs).sort().filter(code=>!filter || cgStatusOf(STATE.cgs[code])===filter).map(code=>{
+  if(sumEl) sumEl.innerHTML = `ทั้งหมด ${Object.keys(STATE.cgs).length} คน &nbsp;|&nbsp; 🟢 ปฏิบัติงาน <b>${counts.active}</b> &nbsp;|&nbsp; 🟠 หยุดปฏิบัติงาน <b>${counts.suspended}</b> &nbsp;|&nbsp; 🔴 ลาออก <b>${counts.resigned}</b><br>ประเภท: 🟣 CG ปกติ <b>${typeCounts.normal}</b> &nbsp;|&nbsp; 💰 CG กระตุ้นเศรษฐกิจ <b>${typeCounts.stimulus}</b> &nbsp;|&nbsp; 🧑‍🤝‍🧑 อสบ. <b>${typeCounts.asb}</b>`;
+  const rows = Object.keys(STATE.cgs).sort().filter(code=>(!filter || cgStatusOf(STATE.cgs[code])===filter) && (!typeFilter || cgTypeOf(STATE.cgs[code])===typeFilter)).map(code=>{
     const cg = STATE.cgs[code];
     const st = cgStatusOf(cg);
     const count = Object.values(STATE.elderly).filter(e=>e.cgCode===code && e.status!=='discharged').length;
@@ -4076,7 +4202,7 @@ function renderCgTable(){
       (st!=='active' ? `<div class="muted" style="font-size:11px;margin-top:3px;">${cg.statusDate ? formatThaiDate(cg.statusDate) : ''}${cg.statusReason ? ' — '+escHtml(cg.statusReason) : ''}</div>` : '');
     const warn = (st!=='active' && count>0) ? `<div style="font-size:11px;color:#D8503A;margin-top:3px;">⚠️ ยังมีผู้สูงอายุ ${count} คน — ควรย้ายไป CG อื่น</div>` : '';
     return `<tr class="${st!=='active'?'cg-inactive':''}">
-      <td>${code}</td><td>${escHtml(cg.name)}</td><td>${cg.idCard||'-'}</td><td>${cg.phone||'-'}</td><td>${cg.moo||'-'}</td><td>${stCell}</td><td>${count}${warn}</td>
+      <td>${code}</td><td>${escHtml(cg.name)}</td><td>${cgTypeTag(cg)}${CG_TYPES[cgTypeOf(cg)].monthly ? `<div class="muted" style="font-size:11px;margin-top:3px;">เป้า ${CG_TYPES[cgTypeOf(cg)].monthly} ครั้ง/เดือน</div>` : ''}</td><td>${cg.idCard||'-'}</td><td>${cg.phone||'-'}</td><td>${cg.moo||'-'}</td><td>${stCell}</td><td>${count}${warn}</td>
       <td style="white-space:nowrap;">
         <button class="btn btn-ghost btn-sm" onclick="openEditCg('${code}')">✏️</button>
         <button class="btn btn-ghost btn-sm" onclick="openVisitPlan('${code}')">📅 แผนการเยี่ยม</button>
@@ -4085,9 +4211,10 @@ function renderCgTable(){
       </td>
     </tr>`;
   }).join('');
-  document.getElementById('cgTable').innerHTML = rows || '<tr><td colspan="8" class="muted">'+(Object.keys(STATE.cgs).length ? 'ไม่มี CG ในสถานะนี้' : 'ยังไม่มีข้อมูล')+'</td></tr>';
+  document.getElementById('cgTable').innerHTML = rows || '<tr><td colspan="9" class="muted">'+(Object.keys(STATE.cgs).length ? 'ไม่มี CG ตามเงื่อนไขที่เลือก' : 'ยังไม่มีข้อมูล')+'</td></tr>';
 }
 document.getElementById('cgStatusFilter').addEventListener('change', renderCgTable);
+document.getElementById('cgTypeFilter').addEventListener('change', renderCgTable);
 
 /* ---- ย้ายผู้สูงอายุในความรับผิดชอบจาก CG หนึ่งไปอีก CG หนึ่ง ---- */
 /* ---- ย้าย CG ผู้รับผิดชอบของผู้สูงอายุแต่ละคน (ย้ายมาไว้ในฟังก์ชัน "จัดการผู้สูงอายุ") ---- */
@@ -4650,6 +4777,7 @@ document.getElementById('addCgBtn').addEventListener('click', ()=>{
   document.getElementById('cgPhone').value = '';
   document.getElementById('cgHouseNo').value = '';
   document.getElementById('cgMoo').value = '';
+  document.getElementById('cgType').value = 'normal';
   document.getElementById('cgStatus').value = 'active';
   document.getElementById('cgStatusDate').value = '';
   document.getElementById('cgStatusReason').value = '';
@@ -4665,6 +4793,7 @@ function openEditCg(code){
   document.getElementById('cgPhone').value = cg.phone||'';
   document.getElementById('cgHouseNo').value = cg.houseNo||'';
   document.getElementById('cgMoo').value = cg.moo||'';
+  document.getElementById('cgType').value = cgTypeOf(cg);
   document.getElementById('cgStatus').value = cgStatusOf(cg);
   document.getElementById('cgStatusDate').value = cg.statusDate||'';
   document.getElementById('cgStatusReason').value = cg.statusReason||'';
@@ -4683,6 +4812,7 @@ document.getElementById('cgSaveBtn').addEventListener('click', ()=>{
     phone: document.getElementById('cgPhone').value.trim(),
     houseNo: document.getElementById('cgHouseNo').value.trim(),
     moo: document.getElementById('cgMoo').value,
+    type: document.getElementById('cgType').value,
     status
   };
   if(status === 'active'){ data.statusDate = null; data.statusReason = null; }   /* null = ลบฟิลด์ออกจากฐานข้อมูล */
@@ -5508,13 +5638,15 @@ function buildVisitBlockHTML(v, elderly, cg, imgW, imgH, fontScale){
   </div>`;
 }
 
-function buildPdfPageHTML(elderly, cg, visitsChunk, monthLabel, yearBE){
+function buildPdfPageHTML(elderly, cg, visitsChunk, monthLabel, yearBE, shrink){
+  shrink = shrink || 1;   /* ตัวคูณย่อขนาดภาพ/ตัวอักษร ใช้ปรับอัตโนมัติเมื่อเนื้อหายาวเกินหนึ่งหน้า A4 */
   const count = visitsChunk.length;
   let imgW, imgH, fontScale;
   if(count === 1){ imgW = 280; imgH = 380; fontScale = 1.25; }
   else if(count === 2){ imgW = 220; imgH = 260; fontScale = 1.1; }
   else if(count === 3){ imgW = 160; imgH = 190; fontScale = 1; }
-  else { imgW = 118; imgH = 140; fontScale = 0.92; }
+  else { imgW = 150; imgH = 160; fontScale = 0.98; }
+  imgW = Math.round(imgW*shrink); imgH = Math.round(imgH*shrink); fontScale = fontScale*shrink;
   const blocks = visitsChunk.map(v=>buildVisitBlockHTML(v, elderly, cg, imgW, imgH, fontScale)).join('');
   const notedIssues = visitsChunk.filter(v=>v.note && v.note.trim()).map(v=>`${formatThaiDate(v.visitDate,true)}: ${v.note.trim()}`);
   const adlScores = visitsChunk.map(v=>v.assessment && v.assessment.adlScore).filter(s=>s!==undefined && s!=='');
@@ -5571,6 +5703,98 @@ function buildPdfPageHTML(elderly, cg, visitsChunk, monthLabel, yearBE){
   </div>`;
 }
 
+/* แบ่งรายการเป็นหน้าๆ ให้จำนวนต่อหน้าใกล้เคียงกัน (เช่น 5 รายการ สูงสุด 4/หน้า = 3+2, 18 รายการ สูงสุด 10/หน้า = 9+9) */
+function balancedChunks(list, max){
+  const n = list.length; if(!n) return [];
+  const k = Math.ceil(n/max), base = Math.floor(n/k), extra = n % k;
+  const out = []; let idx = 0;
+  for(let i=0;i<k;i++){ const size = base + (i<extra ? 1 : 0); out.push(list.slice(idx, idx+size)); idx += size; }
+  return out;
+}
+function pdfSignBlockHTML(cgName){
+  const cert = STATE.reportCertifiers[STATE.activeCertifierId] || {};
+  return `
+    <div style="display:flex;justify-content:space-between;margin:12px 24px 0;font-size:11px;color:#2A1B3D;text-align:center;">
+      <div style="width:47%;">
+        <div>ลงชื่อ ..................................................... </div>
+        <div style="margin-top:4px;">( ${cgName || '.....................................'} )</div>
+        <div>CG ผู้ปฏิบัติงาน (รับรองว่าได้ปฏิบัติงานจริง)</div>
+        <div style="margin-top:4px;">วันที่ ......... / ......... / .........</div>
+      </div>
+      <div style="width:47%;">
+        <div>ลงชื่อ ..................................................... </div>
+        <div style="margin-top:4px;">( ${cert.name || '..................................'} )</div>
+        <div>ตำแหน่ง ${cert.position || '..................................'} (ผู้รับรองผลงาน)</div>
+        <div style="margin-top:4px;">วันที่ ......... / ......... / .........</div>
+      </div>
+    </div>`;
+}
+/* ช่องภาพการเยี่ยม 1 ช่อง ในหน้ารายงานแบบหลายภาพ/หน้า (CG กระตุ้นเศรษฐกิจ 8 ภาพ, อสบ. 10 ภาพ) */
+function buildVisitCellHTML(v, rowH){
+  const e = STATE.elderly[v.elderlyId] || { name:'-' };
+  const a = v.assessment || {}; const vit = a.vitals || {};
+  const dense = rowH < 165;
+  const fs = dense ? 8.8 : 10.2;
+  const bp = (vit.bpSys || vit.bpDia) ? `${vit.bpSys||'-'}/${vit.bpDia||'-'}` : '-';
+  const cut = (s,n)=> (s && s.length>n) ? s.slice(0,n-1)+'…' : (s||'');
+  const care = cut((a.careActivities||[]).map(c=>CARE_ACTIVITY_LABELS[c]).filter(Boolean).join(', '), dense ? 62 : 90);
+  const note = cut((v.note||'').trim(), dense ? 48 : 70);
+  const imgW = Math.round((rowH-14) * (dense ? 0.86 : 0.9));
+  return `
+  <div style="display:flex;gap:8px;border:1px solid #E0C8F7;border-radius:8px;padding:6px;height:${rowH}px;box-sizing:border-box;overflow:hidden;background:#fff;">
+    <img src="${v.photoUrl}" crossorigin="anonymous" style="width:${imgW}px;height:${rowH-14}px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid #ddd;">
+    <div style="flex:1;min-width:0;font-size:${fs}px;line-height:1.42;color:#2A1B3D;overflow:hidden;">
+      <div style="font-weight:700;font-size:${fs+1.6}px;color:#55307F;">${escHtml(e.name)}</div>
+      <div style="color:#6E5D86;">วันที่ ${formatThaiDate(v.visitDate)}</div>
+      <div>BP ${bp} | PR ${vit.pr||'-'} | T ${vit.temp||'-'}°C</div>
+      <div>ADL ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.ltcGroup ? ` | ${escHtml(a.ltcGroup)}` : ''}</div>
+      ${care ? `<div>กิจกรรม: ${escHtml(care)}</div>` : ''}
+      ${note ? `<div><b>ปัญหา:</b> ${escHtml(note)}</div>` : ''}
+    </div>
+  </div>`;
+}
+function buildCgGridPageHTML(page, monthLabel, yBE, shrink){
+  shrink = shrink || 1;
+  const { cg, chunk, info, pageNo, pageTotal, total } = page;
+  const count = chunk.length;
+  const rows = Math.ceil(count/2);
+  const GRID_H = Math.round(664*shrink), GAP = 8;
+  const rowH = Math.min(190, Math.floor((GRID_H - GAP*(Math.max(rows, info.perPage/2)-1)) / Math.max(rows, info.perPage/2)));
+  const cells = chunk.map(v=>buildVisitCellHTML(v, rowH)).join('');
+  const elderlyCount = new Set(chunk.map(v=>v.elderlyId)).size;
+  const noted = chunk.filter(v=>v.note && v.note.trim()).map(v=>`${formatThaiDate(v.visitDate,true)} ${(STATE.elderly[v.elderlyId]||{}).name||''}: ${v.note.trim()}`);
+  const notedText = noted.length ? cut2(noted.join(' | '), 200) : 'ไม่พบปัญหาเด่นชัด';
+  function cut2(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
+  const cgName = cg ? cg.name : '-';
+  return `
+  <div style="width:754px;height:1083px;font-family:'Sarabun',sans-serif;background:#fff;display:flex;flex-direction:column;">
+    <div style="background:linear-gradient(120deg,#7B4AB5,#A06BD8);padding:14px 24px;display:flex;align-items:center;gap:14px;color:#fff;">
+      <img src="${LOGO_BASE64}" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex-shrink:0;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:18px;font-weight:700;">สรุปการเยี่ยมผู้สูงอายุที่มีภาวะพึ่งพิง</div>
+        <div style="font-size:12.5px;margin-top:2px;">ประจำเดือน ${monthLabel} ${yBE}</div>
+        <div style="font-size:11px;margin-top:2px;opacity:.92;">${FACILITY_NAME} ${FACILITY_ADDRESS}</div>
+      </div>
+      <div style="width:58px;flex-shrink:0;"></div>
+    </div>
+    <div style="text-align:center;font-size:16px;font-weight:700;color:#55307F;padding:10px 0 2px;">${escHtml(cgName)} <span style="font-size:12px;font-weight:600;color:#7B4AB5;">(${info.label})</span></div>
+    <div style="text-align:center;font-size:11.5px;color:#6E5D86;padding-bottom:8px;">เยี่ยมรวม ${total} ครั้ง (เป้าหมาย ${info.monthly} ครั้ง/เดือน) &nbsp;|&nbsp; หน้านี้ ${count} ภาพ &nbsp;|&nbsp; หน้า ${pageNo}/${pageTotal}</div>
+    <div style="padding:0 24px;display:flex;flex-direction:column;justify-content:center;height:${GRID_H}px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:${GAP}px;align-content:center;">${cells}</div>
+    </div>
+    <div style="margin:8px 24px 0;background:#EEDDFF;border-radius:8px;padding:8px 14px;">
+      <div style="font-size:12px;font-weight:700;color:#7B4AB5;margin-bottom:3px;">📝 สรุปรายงาน</div>
+      <div style="font-size:10.5px;color:#2A1B3D;">การเยี่ยมในหน้านี้ ${count} ครั้ง ผู้สูงอายุ ${elderlyCount} คน</div>
+      <div style="font-size:10.5px;color:#2A1B3D;margin-top:2px;">ปัญหาสำคัญที่พบ: ${escHtml(notedText)}</div>
+    </div>
+    ${pdfSignBlockHTML(cgName)}
+    <div style="text-align:center;font-size:10.5px;color:#777;border-top:1px solid #eee;padding:5px 0 2px;margin-top:auto;">
+      CG: ${escHtml(cgName)} | ${FACILITY_NAME} ${FACILITY_ADDRESS}
+    </div>
+    <div style="text-align:center;font-size:8px;color:#aaa;padding-bottom:4px;">${COPYRIGHT_NOTICE}</div>
+  </div>`;
+}
+
 document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
   const m = parseInt(pdfMonthSel.value,10), yBE = parseInt(pdfYearSel.value,10);
   const cgFilter = document.getElementById('pdfCgFilter').value;
@@ -5585,21 +5809,32 @@ document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
   });
   if(visits.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return; }
 
-  const byElderly = {};
-  visits.forEach(v=>{ (byElderly[v.elderlyId] = byElderly[v.elderlyId]||[]).push(v); });
-  Object.values(byElderly).forEach(list=>list.sort((a,b)=>a.visitDate.localeCompare(b.visitDate)));
-
-  // 1 หน้า A4 = การเยี่ยมของผู้สูงอายุคนเดียวกัน สูงสุด 4 ครั้ง (ประหยัดกระดาษ)
-  const CHUNK_SIZE = 4;
+  /* แยกตาม CG ผู้เยี่ยม แล้วจัดหน้าตามประเภทของ CG:
+     - CG ปกติ: คนละหน้าต่อผู้สูงอายุ สูงสุด 4 ครั้ง/หน้า (แบ่งให้สมดุล)
+     - CG กระตุ้นเศรษฐกิจ: 8 ภาพ/หน้า, อสบ.: 10 ภาพ/หน้า (รวมทุกผู้สูงอายุของ CG เรียงตามวันที่) */
+  const byCg = {};
+  visits.forEach(v=>{ (byCg[v.cgCode||''] = byCg[v.cgCode||'']||[]).push(v); });
   const pages = [];
-  Object.keys(byElderly).sort().forEach(elderlyId=>{
-    const elderly = STATE.elderly[elderlyId]; if(!elderly) return;
-    const cg = STATE.cgs[elderly.cgCode];
-    const list = byElderly[elderlyId];
-    for(let i=0;i<list.length;i+=CHUNK_SIZE){
-      pages.push({ elderly, cg, chunk: list.slice(i,i+CHUNK_SIZE) });
+  Object.keys(byCg).sort().forEach(cgCode=>{
+    const cgVisits = byCg[cgCode];
+    const cgObj = STATE.cgs[cgCode];
+    const typeInfo = CG_TYPES[cgTypeOf(cgObj)];
+    if(typeInfo.monthly){
+      const sorted = cgVisits.slice().sort((a,b)=> a.visitDate.localeCompare(b.visitDate) || String((STATE.elderly[a.elderlyId]||{}).name||'').localeCompare(String((STATE.elderly[b.elderlyId]||{}).name||''),'th'));
+      const chunks = balancedChunks(sorted, typeInfo.perPage);
+      chunks.forEach((chunk,i)=> pages.push({ kind:'grid', cg:cgObj, info:typeInfo, chunk, pageNo:i+1, pageTotal:chunks.length, total:sorted.length }));
+    } else {
+      const byElderly = {};
+      cgVisits.forEach(v=>{ (byElderly[v.elderlyId] = byElderly[v.elderlyId]||[]).push(v); });
+      Object.keys(byElderly).sort().forEach(elderlyId=>{
+        const elderly = STATE.elderly[elderlyId]; if(!elderly) return;
+        const cg = cgObj || STATE.cgs[elderly.cgCode];
+        const list = byElderly[elderlyId].sort((a,b)=>a.visitDate.localeCompare(b.visitDate));
+        balancedChunks(list, 4).forEach(chunk=> pages.push({ kind:'elderly', elderly, cg, chunk }));
+      });
     }
   });
+  if(pages.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return; }
 
   const btn = document.getElementById('generatePdfBtn');
   btn.disabled = true;
@@ -5611,9 +5846,16 @@ document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
     for(let i=0;i<pages.length;i++){
       progressEl.textContent = `กำลังสร้างหน้า ${i+1}/${pages.length}`;
       const p = pages[i];
-      root.innerHTML = buildPdfPageHTML(p.elderly, p.cg, p.chunk, monthLabel, yBE);
+      const renderPage = (shrink)=>{ root.innerHTML = p.kind==='grid' ? buildCgGridPageHTML(p, monthLabel, yBE, shrink) : buildPdfPageHTML(p.elderly, p.cg, p.chunk, monthLabel, yBE, shrink); };
+      renderPage(1);
       await new Promise(r=>setTimeout(r,300));
-      const target = root.firstElementChild;
+      let target = root.firstElementChild;
+      /* ถ้าเนื้อหาล้นหน้า A4 ให้ย่อภาพ/ตัวอักษรลงทีละนิดจนพอดี 1 หน้า */
+      for(let shrink=0.95; target.scrollHeight > target.clientHeight + 1 && shrink >= 0.6; shrink -= 0.05){
+        renderPage(shrink);
+        await new Promise(r=>setTimeout(r,120));
+        target = root.firstElementChild;
+      }
       const canvas = await html2canvas(target, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
       const imgData = canvas.toDataURL('image/jpeg',0.92);
       if(i>0) pdf.addPage();
