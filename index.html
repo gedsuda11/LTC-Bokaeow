@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -1147,7 +1148,8 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
       💰 <b>CG กระตุ้นเศรษฐกิจ</b> — เยี่ยมรวม 16 ครั้ง/เดือน ออกรายงาน 8 ภาพ/หน้า<br>
       🧑‍🤝‍🧑 <b>อสบ.</b> — เยี่ยมรวม 20 ครั้ง/เดือน ออกรายงาน 10 ภาพ/หน้า
     </div>
-    <button class="btn btn-primary" id="generatePdfBtn" style="margin-top:12px;">📄 ออกรายงาน</button>
+    <button class="btn btn-primary" id="generatePdfBtn" style="margin-top:12px;">📄 ออกรายงาน PDF</button>
+    <button class="btn btn-secondary" id="generateDocxBtn" style="margin-top:12px;margin-left:8px;">📝 ออกรายงาน Word (.docx)</button>
     <div class="upload-progress" id="pdfProgress"></div>
   </div>
 
@@ -5795,11 +5797,11 @@ function buildCgGridPageHTML(page, monthLabel, yBE, shrink){
   </div>`;
 }
 
-document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
+/* รวบรวมข้อมูลการเยี่ยมของเดือน/CG ที่เลือก และจัดหน้าตามประเภท CG — ใช้ร่วมกันทั้ง PDF และ Word */
+function collectVisitReportPages(){
   const m = parseInt(pdfMonthSel.value,10), yBE = parseInt(pdfYearSel.value,10);
   const cgFilter = document.getElementById('pdfCgFilter').value;
   const monthLabel = TH_MONTHS_FULL[m-1];
-  const progressEl = document.getElementById('pdfProgress');
 
   const visits = Object.values(STATE.visits||{}).filter(v=>{
     const [vy,vm] = (v.visitDate||'0000-01-01').split('-').map(Number);
@@ -5807,7 +5809,7 @@ document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
     if(cgFilter && v.cgCode!==cgFilter) return false;
     return true;
   });
-  if(visits.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return; }
+  if(visits.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return null; }
 
   /* แยกตาม CG ผู้เยี่ยม แล้วจัดหน้าตามประเภทของ CG:
      - CG ปกติ: คนละหน้าต่อผู้สูงอายุ สูงสุด 4 ครั้ง/หน้า (แบ่งให้สมดุล)
@@ -5834,7 +5836,16 @@ document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
       });
     }
   });
-  if(pages.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return; }
+  if(pages.length===0){ toast('ไม่พบข้อมูลการเยี่ยมในเดือนที่เลือก','error'); return null; }
+
+  return { pages, monthLabel, yBE };
+}
+
+document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
+  const col = collectVisitReportPages();
+  if(!col) return;
+  const { pages, monthLabel, yBE } = col;
+  const progressEl = document.getElementById('pdfProgress');
 
   const btn = document.getElementById('generatePdfBtn');
   btn.disabled = true;
@@ -5872,6 +5883,329 @@ document.getElementById('generatePdfBtn').addEventListener('click', async ()=>{
     btn.disabled = false;
   }
 });
+
+/* =============================================================
+   ออกรายงานการเยี่ยมเป็นไฟล์ Word (.docx)
+   สร้างไฟล์ .docx จริง (WordprocessingML) ด้วย JSZip — จัดหน้า A4 เหมือนรายงาน PDF:
+     CG ปกติ = คนละหน้า/ผู้สูงอายุ (สูงสุด 4 ครั้ง/หน้า) | กระตุ้นเศรษฐกิจ = 8 ภาพ/หน้า | อสบ. = 10 ภาพ/หน้า
+============================================================= */
+/* ฟอนต์ TH Sarabun PSK มีขนาดตัวอักษรเล็กกว่าฟอนต์ทั่วไปที่ขนาด pt เท่ากัน จึงขยายขนาดตัวอักษร (DX_SCALE) โดยคงความสูงบรรทัดเดิม */
+const DX_FONT = 'TH SarabunPSK', DX_SCALE = 1.3, DX_LH = 32,   /* DX_LH: ความสูงบรรทัด (twip) ต่อ 1 หน่วยขนาดเดิม */
+   DX_PURPLE = '7B4AB5', DX_TITLE = '55307F', DX_MUTED = '6E5D86', DX_TEXT = '2A1B3D', DX_BORDER = 'D9C2F2';
+const DX_PAGE_W = 11906, DX_PAGE_H = 16838, DX_MAR_X = 850, DX_CONTENT_W = DX_PAGE_W - DX_MAR_X*2;   /* หน่วย twip (1 ซม. ≈ 567) */
+const DX_GRID_H = 9200;   /* ความสูงพื้นที่ภาพการเยี่ยมต่อหน้า */
+
+function dxEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function dxRun(t, o){
+  const sz = Math.round((o.sz||9)*DX_SCALE*2);
+  return `<w:r><w:rPr><w:rFonts w:ascii="${DX_FONT}" w:hAnsi="${DX_FONT}" w:eastAsia="${DX_FONT}" w:cs="${DX_FONT}"/>${o.b?'<w:b/><w:bCs/>':''}<w:color w:val="${o.color||DX_TEXT}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${dxEsc(t)}</w:t></w:r>`;
+}
+/* ย่อหน้าบรรทัดเดียว/หลายบรรทัด ความสูงบรรทัดคงที่ (exact) เพื่อให้ขนาดหน้าคาดเดาได้ทุกเครื่อง */
+function dxLine(runs, sz, o){
+  o = o || {};
+  if(typeof runs === 'string') runs = [{ t: runs }];
+  const inner = runs.map(r=>dxRun(r.t, { sz: r.sz||sz, b: r.b, color: r.color||o.color })).join('');
+  return `<w:p><w:pPr><w:spacing w:before="${o.before||0}" w:after="${o.after||0}" w:line="${Math.round(sz*DX_LH)}" w:lineRule="exact"/>${o.jc?`<w:jc w:val="${o.jc}"/>`:''}</w:pPr>${inner}</w:p>`;
+}
+function dxGap(h){ return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="${h}" w:lineRule="exact"/></w:pPr></w:p>`; }
+function dxPageBreak(){ return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr><w:r><w:br w:type="page"/></w:r></w:p>`; }
+function dxDrawing(rid, cxTw, cyTw, id){
+  const cx = Math.round(cxTw*635), cy = Math.round(cyTw*635);
+  return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Picture ${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="image${id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+}
+function dxImgPara(rid, cxTw, cyTw, id, jc){
+  return `<w:p><w:pPr><w:spacing w:before="0" w:after="0"/>${jc?`<w:jc w:val="${jc}"/>`:''}</w:pPr>${dxDrawing(rid, cxTw, cyTw, id)}</w:p>`;
+}
+function dxCell(inner, w, o){
+  o = o || {};
+  const sides = o.borders || [];
+  const bc = o.bc || DX_BORDER;
+  const borders = '<w:tcBorders>' + ['top','left','bottom','right'].map(s=> sides.includes(s)
+    ? `<w:${s} w:val="single" w:sz="6" w:space="0" w:color="${bc}"/>` : `<w:${s} w:val="nil"/>`).join('') + '</w:tcBorders>';
+  const m = o.mar || [40,60,40,60];   /* บน ซ้าย ล่าง ขวา */
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.span?`<w:gridSpan w:val="${o.span}"/>`:''}${borders}${o.shade?`<w:shd w:val="clear" w:color="auto" w:fill="${o.shade}"/>`:''}<w:tcMar><w:top w:w="${m[0]}" w:type="dxa"/><w:left w:w="${m[1]}" w:type="dxa"/><w:bottom w:w="${m[2]}" w:type="dxa"/><w:right w:w="${m[3]}" w:type="dxa"/></w:tcMar><w:vAlign w:val="${o.va||'top'}"/></w:tcPr>${inner || dxGap(20)}</w:tc>`;
+}
+function dxRow(cells, h){
+  return `<w:tr><w:trPr><w:cantSplit/>${h?`<w:trHeight w:val="${h}" w:hRule="exact"/>`:''}</w:trPr>${cells.join('')}</w:tr>`;
+}
+function dxTable(widths, rows){
+  const total = widths.reduce((a,b)=>a+b,0);
+  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+}
+
+/* ---- เตรียมรูป ---- */
+function dxLoadImage(url){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const timer = setTimeout(()=>reject(new Error('timeout')), 20000);
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>{ clearTimeout(timer); resolve(img); };
+    img.onerror = ()=>{ clearTimeout(timer); reject(new Error('load')); };
+    img.src = url;
+  });
+}
+function dxCanvasBytes(canvas, type, q){
+  return new Promise(res=> canvas.toBlob(b=> b.arrayBuffer().then(buf=>res(new Uint8Array(buf))), type, q));
+}
+/* ภาพการเยี่ยม: ครอปแบบ cover ให้ได้สัดส่วนเดียวกับช่องในตาราง และย่อขนาดเพื่อให้ไฟล์ไม่ใหญ่เกินไป */
+async function dxPhotoBytes(url, wTw, hTw){
+  const outH = 520, outW = Math.max(120, Math.round(outH * wTw / hTw));
+  const canvas = document.createElement('canvas'); canvas.width = outW; canvas.height = outH;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#EEE5F7'; c.fillRect(0,0,outW,outH);
+  try{
+    const img = await dxLoadImage(url);
+    const scale = Math.max(outW/img.width, outH/img.height);
+    const sw = outW/scale, sh = outH/scale;
+    c.drawImage(img, (img.width-sw)/2, (img.height-sh)/2, sw, sh, 0, 0, outW, outH);
+  }catch(e){
+    c.fillStyle = '#6E5D86'; c.font = '28px sans-serif'; c.textAlign = 'center'; c.fillText('ไม่มีภาพ', outW/2, outH/2);
+  }
+  return dxCanvasBytes(canvas, 'image/jpeg', 0.85);
+}
+/* โลโก้: ตัดเป็นวงกลม (พื้นหลังโปร่งใส) */
+async function dxLogoBytes(){
+  const size = 240;
+  const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+  const c = canvas.getContext('2d');
+  try{
+    const img = await dxLoadImage(LOGO_BASE64);
+    c.beginPath(); c.arc(size/2, size/2, size/2, 0, Math.PI*2); c.closePath(); c.clip();
+    c.drawImage(img, 0, 0, size, size);
+  }catch(e){ c.fillStyle = '#fff'; c.beginPath(); c.arc(size/2, size/2, size/2, 0, Math.PI*2); c.fill(); }
+  return dxCanvasBytes(canvas, 'image/png');
+}
+
+/* ---- ประมาณจำนวนบรรทัดและย่อข้อความให้พอดีช่อง (ความสูงช่องคงที่ ข้อความที่เกินจะถูกตัดทิ้ง) ---- */
+function dxFitLines(items, sz, textWTw, capLines){
+  const cpl = Math.max(10, Math.floor((textWTw/567) / (sz*0.0353*0.55)));   /* จำนวนตัวอักษรไทยโดยประมาณต่อบรรทัด */
+  const text = it => it.runs.map(r=>r.t).join('');
+  const lines = it => Math.max(1, Math.ceil(text(it).length / cpl));
+  const total = list => list.reduce((a,it)=>a+lines(it),0);
+  const cutTo = (it, maxLines)=>{   /* ย่อข้อความส่วนสุดท้ายของบรรทัดให้ไม่เกิน maxLines บรรทัด */
+    const r = it.runs[it.runs.length-1];
+    const allowed = Math.max(12, cpl*maxLines - (text(it).length - r.t.length) - 1);
+    if(r.t.length > allowed) r.t = r.t.slice(0, allowed) + '…';
+  };
+  let list = items.slice();
+  if(total(list) > capLines) list.forEach(it=>{ if(it.cuttable) cutTo(it, it.maxLines||2); });      /* 1) ย่อรายการยาวให้ไม่เกิน 2 บรรทัด */
+  for(let i=list.length-1; i>=0 && total(list)>capLines; i--){ if(list[i].optional) list.splice(i,1); }  /* 2) ตัดบรรทัดรอง */
+  if(total(list) > capLines) list.forEach(it=>{ if(it.cuttable) cutTo(it, 1); });                    /* 3) ย่อเหลือบรรทัดเดียว */
+  while(list.length > 1 && total(list) > capLines){ const k = list.map(it=>it.cuttable?1:0).lastIndexOf(1); if(k < 0) break; list.splice(k,1); }
+  return list;
+}
+
+/* ---- ส่วนประกอบของหน้ารายงาน ---- */
+async function dxBanner(ctx, monthLabel, yBE){
+  const rid = await ctx.logo();
+  const logoCell = dxCell(dxImgPara(rid, 980, 980, ctx.nextId(), 'center'), 1300, { shade: DX_PURPLE, va: 'center', mar:[0,0,0,0] });
+  const titleCell = dxCell(
+    dxLine([{ t:'สรุปการเยี่ยมผู้สูงอายุที่มีภาวะพึ่งพิง', b:true }], 16, { jc:'center', color:'FFFFFF' }) +
+    dxLine('ประจำเดือน ' + monthLabel + ' ' + yBE, 10, { jc:'center', color:'FFFFFF' }) +
+    dxLine(FACILITY_NAME + ' ' + FACILITY_ADDRESS, 8.5, { jc:'center', color:'F1E4FF' }),
+    DX_CONTENT_W - 1300, { shade: DX_PURPLE, va: 'center', mar:[0,0,0,1300] });
+  return dxTable([1300, DX_CONTENT_W - 1300], [dxRow([logoCell, titleCell], 1300)]);
+}
+function dxSummaryBox(lines){
+  const inner = dxLine([{ t:'สรุปรายงาน', b:true, color:DX_PURPLE }], 10, { after: 20 }) + lines.map(t=>dxLine(t, 9, {})).join('');
+  return dxTable([DX_CONTENT_W], [dxRow([dxCell(inner, DX_CONTENT_W, { shade:'EEDDFF', mar:[80,200,80,200] })])]);
+}
+function dxSignBlock(cgName){
+  const cert = STATE.reportCertifiers[STATE.activeCertifierId] || {};
+  const half = Math.floor(DX_CONTENT_W/2);
+  const col = (name, role) =>
+    dxLine('ลงชื่อ .....................................................', 9, { jc:'center' }) +
+    dxLine('( ' + name + ' )', 9, { jc:'center', before: 40 }) +
+    dxLine(role, 9, { jc:'center' }) +
+    dxLine('วันที่ ......... / ......... / .........', 9, { jc:'center', before: 40 });
+  return dxTable([half, DX_CONTENT_W-half], [dxRow([
+    dxCell(col(cgName || '.....................................', 'CG ผู้ปฏิบัติงาน (รับรองว่าได้ปฏิบัติงานจริง)'), half, {}),
+    dxCell(col(cert.name || '..................................', 'ตำแหน่ง ' + (cert.position || '..................................') + ' (ผู้รับรองผลงาน)'), DX_CONTENT_W-half, {})
+  ])]);
+}
+function dxFooter(cgName){
+  return dxLine('CG: ' + cgName + ' | ' + FACILITY_NAME + ' ' + FACILITY_ADDRESS, 8, { jc:'center', color:'777777' }) +
+         dxLine(COPYRIGHT_NOTICE, 6.5, { jc:'center', color:'AAAAAA' });
+}
+const dxCut = (s, n)=> (s && s.length > n) ? s.slice(0, n-1) + '…' : (s || '');
+
+/* ---- หน้าของ CG ปกติ: ผู้สูงอายุ 1 คน ต่อ 1 หน้า (1–4 การเยี่ยม) ---- */
+async function dxElderlyPage(ctx, p, monthLabel, yBE){
+  const { elderly, cg, chunk } = p;
+  const count = chunk.length;
+  const cgName = cg ? cg.name : '-';
+  const GAPE = 100;
+  const rowH = Math.min(Math.floor((DX_GRID_H - GAPE*(count-1)) / count), [0, 7000, 4600, 3066, 2300][count]);
+  const sz = [0, 10, 9.5, 9, 8][count];
+  const imgH = rowH - 100;
+  const imgW = Math.min(Math.round(imgH * 0.82), 4800);
+  const imgColW = imgW + 160, textW = DX_CONTENT_W - imgColW;
+  const cap = Math.floor((rowH - 100) / (sz*DX_LH));
+  const rows = [];
+  for(let i=0; i<chunk.length; i++){
+    const v = chunk[i];
+    const a = v.assessment || {}, vit = a.vitals || {};
+    const bp = (vit.bpSys || vit.bpDia) ? `${vit.bpSys||'-'}/${vit.bpDia||'-'}` : '-';
+    const careList = (a.careActivities||[]).map(c=>CARE_ACTIVITY_LABELS[c]).filter(Boolean);
+    const rehabList = (a.rehabActivities||[]).map(c=>REHAB_ACTIVITY_LABELS[c]).filter(Boolean);
+    if(a.rehabOther) rehabList.push('อื่นๆ: ' + a.rehabOther);
+    const foodDetail = (a.foodTypeDetail||[]).map(c=>FOODTYPE_DETAIL_LABELS[c]).filter(Boolean);
+    const items = [
+      { runs:[{ t: elderly.name, b:true, color:DX_TITLE, sz: sz+1.5 }, { t:`  (วันที่ ${formatThaiDate(v.visitDate)})`, color:DX_MUTED }] },
+      { runs:[{ t:`CG ผู้เยี่ยม: ${cgName}` }], optional:true },
+      { runs:[{ t:`ความดัน ${bp} mmHg | ชีพจร ${vit.pr||'-'} | อัตราหายใจ ${vit.rr||'-'} | อุณหภูมิ ${vit.temp||'-'}°C | น้ำหนัก ${vit.weight||'-'} กก.` }] },
+      { runs:[{ t:`คะแนน ADL ครั้งนี้: ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.healthStatus ? ` | ภาวะสุขภาพ: ${a.healthStatus}` : ''}${a.ltcGroup ? ` | กลุ่ม: ${a.ltcGroup}` : ''}` }] },
+      { runs:[{ t:`ยา: ${MEDICATION_LABELS[a.medication]||'-'} | กิจวัตร: ${DAILY_ACTIVITY_LABELS[a.dailyActivity]||'-'} | ขับถ่าย: ${ELIMINATION_LABELS[a.elimination]||'-'}` }] },
+      { runs:[{ t:`อาหาร: ${FEEDING_LABELS[a.feedingMethod]||'-'} (${FOODTYPE_LABELS[a.foodType]||'-'}${foodDetail.length ? ' ['+foodDetail.join(', ')+']' : ''})` }], cuttable:true },
+      { runs:[{ t:`สุขภาพจิตและอารมณ์: ${MENTAL_HEALTH_LABELS[a.mentalHealth]||'-'}` }], optional: !a.mentalHealth || count>=3 },
+      { runs:[{ t:'กิจกรรมที่ทำ: ' }, { t: careList.length ? careList.join(', ') : '-' }], cuttable:true, maxLines:2 },
+      { runs:[{ t:'กิจกรรมฟื้นฟูสภาพร่างกาย: ' }, { t: rehabList.join(', ') }], optional:true, cuttable:true },
+      { runs:[{ t:'ปัญหาสำคัญของคนไข้คนนี้คือ: ', b:true }, { t: dxCut((v.note||'').trim(), 220) }], cuttable:true, maxLines:2 }
+    ].filter(it=> !(it.runs[0].t.startsWith('สุขภาพจิต') && !a.mentalHealth) && !(it.runs[0].t.startsWith('กิจกรรมฟื้นฟู') && !rehabList.length) && !(it.runs[0].t.startsWith('ปัญหาสำคัญ') && !(v.note||'').trim()));
+    const fitted = dxFitLines(items, sz, textW - 160, cap);
+    const textXml = fitted.map(it=>dxLine(it.runs, sz, {})).join('');
+    const photo = await dxPhotoBytes(v.photoUrl, imgW, imgH);
+    const rid = ctx.addMedia(photo, 'jpg');
+    rows.push(dxRow([
+      dxCell(dxImgPara(rid, imgW, imgH, ctx.nextId()), imgColW, { borders:['top','left','bottom'], mar:[50,80,50,80] }),
+      dxCell(textXml, textW, { borders:['top','right','bottom'], mar:[50,80,50,80] })
+    ], rowH));
+    if(i < chunk.length-1) rows.push(dxRow([dxCell('', imgColW, {}), dxCell('', textW, {})], GAPE));
+  }
+  const notedIssues = chunk.filter(v=>v.note && v.note.trim()).map(v=>`${formatThaiDate(v.visitDate,true)}: ${v.note.trim()}`);
+  const adlScores = chunk.map(v=>v.assessment && v.assessment.adlScore).filter(s=>s!==undefined && s!=='');
+  const gridTable = dxTable([imgColW, textW], rows);
+  const gridUsed = count*rowH + (count-1)*GAPE;
+  return await dxBanner(ctx, monthLabel, yBE) + dxGap(80) +
+    dxLine([{ t: elderly.name, b:true, color:DX_TITLE }], 14, { jc:'center', before:40 }) +
+    dxLine(`อายุ ${elderly.age||'-'} ปี | CG ผู้ดูแล: ${cgName} | จำนวน ${count} ครั้งในหน้านี้`, 9, { jc:'center', color:DX_MUTED }) +
+    dxLine(`โรคหลัก: ${elderly.mainDiagnosis||'-'}${elderly.comorbidities ? ' | โรคร่วม: '+elderly.comorbidities : ''}`, 8.5, { jc:'center', color:DX_MUTED }) +
+    dxLine(`กลุ่ม ADL: ${(getAdlBarthelInfo(elderly)||{}).group||'-'} | TAI: ${elderly.taiLabel||'-'} | ญาติผู้ดูแลหลัก: ${elderly.primaryRelativeName||'-'}`, 8.5, { jc:'center', color:DX_MUTED, after:60 }) +
+    gridTable +
+    dxGap(Math.max(100, DX_GRID_H - gridUsed + 100)) +
+    dxSummaryBox([
+      'คะแนน ADL แต่ละครั้ง: ' + (adlScores.length ? adlScores.join(', ') + ' คะแนน' : '-'),
+      'ปัญหาสำคัญที่พบในช่วงนี้: ' + (notedIssues.length ? dxCut(notedIssues.join(' | '), 300) : 'ไม่พบปัญหาเด่นชัด')
+    ]) + dxGap(160) + dxSignBlock(cgName) + dxGap(100) + dxFooter(cgName);
+}
+
+/* ---- หน้าของ CG กระตุ้นเศรษฐกิจ (8 ภาพ) / อสบ. (10 ภาพ): 2 คอลัมน์ ---- */
+async function dxGridPage(ctx, p, monthLabel, yBE){
+  const { cg, chunk, info, pageNo, pageTotal, total } = p;
+  const cgName = cg ? cg.name : '-';
+  const count = chunk.length;
+  const nRows = Math.ceil(count/2), layoutRows = Math.max(nRows, info.perPage/2);
+  const GAP = 80, COLGAP = 140;
+  const rowH = Math.min(2600, Math.floor((DX_GRID_H - GAP*(layoutRows-1)) / layoutRows));
+  const blockW = Math.floor((DX_CONTENT_W - COLGAP)/2);
+  const dense = rowH < 2200;
+  const sz = dense ? 7.5 : 9;
+  const imgH = rowH - 100, imgW = Math.round(imgH * (dense ? 0.82 : 0.86));
+  const imgColW = imgW + 160, textW = blockW - imgColW;
+  const cap = Math.floor((rowH - 100) / (sz*DX_LH));
+  const widths = [imgColW, textW, COLGAP, imgColW, textW];
+  const rows = [];
+  for(let r=0; r<nRows; r++){
+    const cells = [];
+    for(let k=0; k<2; k++){
+      const v = chunk[r*2+k];
+      if(!v){ cells.push(dxCell('', imgColW, {}), dxCell('', textW, {})); }
+      else {
+        const e = STATE.elderly[v.elderlyId] || { name:'-' };
+        const a = v.assessment || {}, vit = a.vitals || {};
+        const bp = (vit.bpSys || vit.bpDia) ? `${vit.bpSys||'-'}/${vit.bpDia||'-'}` : '-';
+        const care = (a.careActivities||[]).map(c=>CARE_ACTIVITY_LABELS[c]).filter(Boolean).join(', ');
+        const note = (v.note||'').trim();
+        const items = [
+          { runs:[{ t:e.name, b:true, color:DX_TITLE, sz: sz+1.5 }] },
+          { runs:[{ t:`วันที่ ${formatThaiDate(v.visitDate)} | ADL ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.ltcGroup ? ' | '+a.ltcGroup : ''}`, color:DX_MUTED }] },
+          { runs:[{ t:`BP ${bp} | PR ${vit.pr||'-'} | T ${vit.temp||'-'}°C` }] },
+          { runs:[{ t:'กิจกรรม: ' }, { t: care }], cuttable:true, maxLines:2, optional: !care },
+          { runs:[{ t:'ปัญหา: ', b:true }, { t: dxCut(note, 120) }], cuttable:true, maxLines:2 }
+        ].filter(it=> !(it.runs[0].t==='ปัญหา: ' && !note));
+        const fitted = dxFitLines(items, sz, textW - 160, cap);
+        const photo = await dxPhotoBytes(v.photoUrl, imgW, imgH);
+        const rid = ctx.addMedia(photo, 'jpg');
+        cells.push(
+          dxCell(dxImgPara(rid, imgW, imgH, ctx.nextId()), imgColW, { borders:['top','left','bottom'], mar:[50,80,50,80] }),
+          dxCell(fitted.map(it=>dxLine(it.runs, sz, {})).join(''), textW, { borders:['top','right','bottom'], mar:[50,80,50,80] })
+        );
+      }
+      if(k===0) cells.push(dxCell('', COLGAP, {}));
+    }
+    rows.push(dxRow(cells, rowH));
+    if(r < nRows-1) rows.push(dxRow(widths.map(w=>dxCell('', w, {})), GAP));
+  }
+  const gridTable = dxTable(widths, rows);
+  const gridUsed = nRows*rowH + (nRows-1)*GAP;
+  const elderlyCount = new Set(chunk.map(v=>v.elderlyId)).size;
+  const noted = chunk.filter(v=>v.note && v.note.trim()).map(v=>`${formatThaiDate(v.visitDate,true)} ${(STATE.elderly[v.elderlyId]||{}).name||''}: ${v.note.trim()}`);
+  return await dxBanner(ctx, monthLabel, yBE) + dxGap(80) +
+    dxLine([{ t: cgName, b:true, color:DX_TITLE }, { t:`  (${info.label})`, color:DX_PURPLE, sz:11 }], 14, { jc:'center', before:40 }) +
+    dxLine(`เยี่ยมรวม ${total} ครั้ง (เป้าหมาย ${info.monthly} ครั้ง/เดือน) | หน้านี้ ${count} ภาพ | หน้า ${pageNo}/${pageTotal}`, 9, { jc:'center', color:DX_MUTED, after:60 }) +
+    gridTable +
+    dxGap(Math.max(100, DX_GRID_H - gridUsed + 100)) +
+    dxSummaryBox([
+      `การเยี่ยมในหน้านี้ ${count} ครั้ง ผู้สูงอายุ ${elderlyCount} คน`,
+      'ปัญหาสำคัญที่พบ: ' + (noted.length ? dxCut(noted.join(' | '), 200) : 'ไม่พบปัญหาเด่นชัด')
+    ]) + dxGap(160) + dxSignBlock(cgName) + dxGap(100) + dxFooter(cgName);
+}
+
+async function buildVisitReportDocx(pages, monthLabel, yBE, onProgress){
+  const ctx = {
+    media: [], _id: 100, _logoRid: null,
+    nextId(){ return ++this._id; },
+    addMedia(bytes, ext){ const n = this.media.length + 1; this.media.push({ name:`image${n}.${ext}`, bytes }); return 'rIdImg' + n; },
+    async logo(){ if(!this._logoRid) this._logoRid = this.addMedia(await dxLogoBytes(), 'png'); return this._logoRid; }
+  };
+  let body = '';
+  for(let i=0; i<pages.length; i++){
+    if(onProgress) onProgress(i+1, pages.length);
+    const p = pages[i];
+    if(i > 0) body += dxPageBreak();
+    body += p.kind === 'grid' ? await dxGridPage(ctx, p, monthLabel, yBE) : await dxElderlyPage(ctx, p, monthLabel, yBE);
+  }
+  body += dxGap(20);
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}<w:sectPr><w:pgSz w:w="${DX_PAGE_W}" w:h="${DX_PAGE_H}"/><w:pgMar w:top="500" w:right="${DX_MAR_X}" w:bottom="500" w:left="${DX_MAR_X}" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${DX_FONT}" w:hAnsi="${DX_FONT}" w:eastAsia="${DX_FONT}" w:cs="${DX_FONT}"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="th-TH" w:bidi="th-TH"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>`;
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${ctx.media.map((m,i)=>`<Relationship Id="rIdImg${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${m.name}"/>`).join('')}</Relationships>`;
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', contentTypes);
+  zip.file('_rels/.rels', rootRels);
+  zip.file('word/document.xml', documentXml);
+  zip.file('word/styles.xml', stylesXml);
+  zip.file('word/_rels/document.xml.rels', docRels);
+  ctx.media.forEach(m=> zip.file('word/media/' + m.name, m.bytes));
+  return zip.generateAsync({ type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE' });
+}
+
+document.getElementById('generateDocxBtn').addEventListener('click', async ()=>{
+  if(typeof JSZip === 'undefined'){ toast('โหลดไลบรารี JSZip ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้าเว็บ','error'); return; }
+  const col = collectVisitReportPages();
+  if(!col) return;
+  const btn = document.getElementById('generateDocxBtn');
+  const progressEl = document.getElementById('pdfProgress');
+  btn.disabled = true;
+  try{
+    const blob = await buildVisitReportDocx(col.pages, col.monthLabel, col.yBE, (i,n)=>{ progressEl.textContent = `กำลังสร้างไฟล์ Word หน้า ${i}/${n}`; });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `สรุปการเยี่ยม_${col.monthLabel}${col.yBE}.docx`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast('สร้างไฟล์ Word สำเร็จ','success');
+  }catch(err){
+    console.error(err);
+    toast('เกิดข้อผิดพลาดขณะสร้างไฟล์ Word: '+err.message,'error');
+  }finally{
+    progressEl.textContent = '';
+    btn.disabled = false;
+  }
+});
+
 
 /* =============================================================
    รายงานข้อมูลผู้สูงอายุ (สถานะทั้งหมด) — ออกเป็น Excel และ PDF
