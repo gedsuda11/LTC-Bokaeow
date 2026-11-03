@@ -568,7 +568,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
   <input type="hidden" id="upUserId">
   <p class="muted" id="upUserLabel"></p>
   <div id="upCheckboxes" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
-  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('userPermissionsModal')">ยกเลิก</button><button class="btn btn-primary" id="upSaveBtn">บันทึกสิทธิ์</button></div>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('userPermissionsModal')">ยกเลิก</button><button class="btn btn-secondary" id="upResetBtn">↩️ ใช้สิทธิ์ตามบทบาท</button><button class="btn btn-primary" id="upSaveBtn">บันทึกสิทธิ์</button></div>
 </div></div>
 
 <div class="modal-overlay" id="editUserModal"><div class="modal-box">
@@ -584,6 +584,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
       <option value="unassigned">-- ยังไม่กำหนดบทบาท --</option>
       <option value="admin">ผู้ดูแลระบบ (Admin)</option>
       <option value="care_manager">Care Manager (CM)</option>
+      <option value="staff">เจ้าหน้าที่ รพ.สต.</option>
       <option value="cg">CG (ผู้ดูแลผู้สูงอายุ)</option>
     </select>
   </div>
@@ -2527,8 +2528,9 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 ============================================================= */
 const ROLE_TABS = {
   admin:        ['dashboard','record','cg','elderly','equipment','pdf','history','users'],
-  care_manager: ['dashboard','record','cg','elderly','equipment','pdf','history'],
-  cg:           ['dashboard','record','equipment'],
+  care_manager: ['dashboard','record','cg','elderly','equipment','pdf','history'],   /* CM: ทุกเมนูยกเว้น "ผู้ใช้งาน" */
+  staff:        ['dashboard','equipment','pdf','history'],                          /* เจ้าหน้าที่ รพ.สต. */
+  cg:           ['dashboard','record'],                                              /* CG: ภาพรวม + บันทึกการเยี่ยม เท่านั้น */
   unassigned:   ['dashboard'],
   public:       ['dashboard']
 };
@@ -2536,6 +2538,7 @@ const ROLE_LABELS = {
   admin: 'ผู้ดูแลระบบ (Admin)',
   care_manager: 'Care Manager (CM)',
   cg: 'CG (ผู้ดูแลผู้สูงอายุ)',
+  staff: 'เจ้าหน้าที่ รพ.สต.',
   unassigned: 'ยังไม่กำหนดบทบาท',
   public: 'บุคคลทั่วไป'
 };
@@ -2557,11 +2560,17 @@ function permsFromRoleTabs(role){
 }
 /* คืนรายชื่อแท็บที่ผู้ใช้คนนี้เข้าถึงได้ — Admin เข้าถึงได้ทุกแท็บเสมอ,
    ผู้ใช้อื่นใช้สิทธิ์ที่ Admin กำหนดไว้ (permissions) ถ้ายังไม่เคยตั้งไว้ ใช้ค่าเริ่มต้นตามบทบาท */
+/* สิทธิ์ที่ใช้จริง: ถ้า Admin ปรับสิทธิ์รายบุคคลไว้ (permissionsCustom) ใช้ตามนั้น ไม่เช่นนั้นใช้ค่ามาตรฐานตามบทบาทเสมอ
+   (ผู้ใช้เดิมที่เคยมีสิทธิ์ค้างจากค่ามาตรฐานรุ่นเก่า จะได้สิทธิ์ใหม่ตามบทบาททันที) */
+function effectivePerms(u){
+  if(u && u.permissionsCustom && u.permissions) return u.permissions;
+  return permsFromRoleTabs((u && u.role) || 'unassigned');
+}
 function tabsAllowedForUser(u){
   if(!u) return ROLE_TABS.public;
   if(u.role === 'admin') return ROLE_TABS.admin;
-  const perms = u.permissions || permsFromRoleTabs(u.role || 'unassigned');
-  return Object.keys(perms).filter(k=>perms[k]);
+  const perms = effectivePerms(u);
+  return Object.keys(perms).filter(k=>perms[k] && k!=='users');   /* เมนู "ผู้ใช้งาน" เฉพาะ Admin */
 }
 /* ผู้ใช้งานทั่วไป (username/password: TOP) ดูได้ทุกฟังก์ชัน (ยกเว้นแท็บผู้ใช้งานซึ่งเป็นของ Admin โดยเฉพาะ
    เพราะมีรหัสผ่านของคนอื่นแสดงอยู่) แต่บันทึก/แก้ไข/ลบข้อมูลใดๆ ไม่ได้เลย — ฟังก์ชันที่มีการเขียนข้อมูลทุกจุด
@@ -2844,7 +2853,9 @@ function openEditUser(uid){
   document.getElementById('euDisplayName').value = u.displayName||'';
   document.getElementById('euAddress').value = u.address||'';
   document.getElementById('euPhone').value = u.phone||'';
-  document.getElementById('euRole').value = u.role || 'unassigned';
+  /* ยังไม่กำหนดบทบาท → เสนอบทบาทตามประเภทบุคคลที่สมัคร (admin ยังแก้ไขได้ก่อนกดบันทึก) */
+  const suggestedRole = { cg:'cg', cm:'care_manager', staff:'staff' }[u.personType];
+  document.getElementById('euRole').value = ((!u.role || u.role==='unassigned') && suggestedRole) ? suggestedRole : (u.role || 'unassigned');
   document.getElementById('euError').textContent = '';
   renderEuCgOptions();
   document.getElementById('euCgCode').value = u.cgCode||'';
@@ -2887,7 +2898,7 @@ document.getElementById('euSaveBtn').addEventListener('click', ()=>{
     cgType: role==='cg' ? document.getElementById('euCgType').value : ''
   };
   /* ถ้าเปลี่ยนบทบาท และยังไม่เคยตั้งสิทธิ์แบบละเอียดไว้ด้วยตัวเอง ให้รีเซ็ตสิทธิ์เริ่มต้นตามบทบาทใหม่ */
-  if(roleChanged){ updates.permissions = permsFromRoleTabs(role); }
+  if(roleChanged){ updates.permissions = permsFromRoleTabs(role); updates.permissionsCustom = false; }
   /* เชื่อมกับ CG ในทะเบียนแล้ว → อัปเดตประเภทของ CG นั้นด้วย เพื่อให้เป้าหมายการเยี่ยมและรายงานตรงกัน */
   if(role==='cg' && cgCode && STATE.cgs[cgCode] && cgTypeOf(STATE.cgs[cgCode]) !== updates.cgType){
     db.ref('cgs/'+cgCode+'/type').set(updates.cgType);
@@ -2909,23 +2920,34 @@ function openUserPermissions(uid){
   if(!u) return;
   document.getElementById('upUserId').value = uid;
   document.getElementById('upUserLabel').textContent = `${u.displayName} (${ROLE_LABELS[u.role]||u.role} - ${u.username})`;
-  const perms = u.permissions || permsFromRoleTabs(u.role || 'unassigned');
+  const perms = effectivePerms(u);
   document.getElementById('upCheckboxes').innerHTML = TAB_DEFS.map(t=>`
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
       <input type="checkbox" data-permkey="${t.key}" ${perms[t.key] ? 'checked' : ''}> ${t.label}
     </label>`).join('');
   openModal('userPermissionsModal');
 }
+/* คืนค่าสิทธิ์เป็นมาตรฐานตามบทบาท (เลิกการปรับรายบุคคล) */
+document.getElementById('upResetBtn').addEventListener('click', ()=>{
+  const uid = document.getElementById('upUserId').value;
+  const u = STATE.users[uid]; if(!u) return;
+  const perms = permsFromRoleTabs(u.role || 'unassigned');
+  db.ref('users/'+uid).update({ permissions: perms, permissionsCustom: false }).then(()=>{
+    toast('คืนค่าสิทธิ์ตามบทบาทแล้ว','success');
+    closeModal('userPermissionsModal');
+    if(uid === CURRENT_USER_ID){ CURRENT_USER.permissions = perms; CURRENT_USER.permissionsCustom = false; applyAccessControl(CURRENT_USER); }
+  });
+});
 document.getElementById('upSaveBtn').addEventListener('click', ()=>{
   const uid = document.getElementById('upUserId').value;
   const boxes = document.querySelectorAll('#upCheckboxes input[type=checkbox]');
   const perms = {};
   boxes.forEach(b=>{ perms[b.dataset.permkey] = b.checked; });
-  db.ref('users/'+uid+'/permissions').set(perms).then(()=>{
+  db.ref('users/'+uid).update({ permissions: perms, permissionsCustom: true }).then(()=>{
     toast('บันทึกสิทธิ์การใช้งานสำเร็จ','success');
     closeModal('userPermissionsModal');
     if(uid === CURRENT_USER_ID){
-      CURRENT_USER.permissions = perms;
+      CURRENT_USER.permissions = perms; CURRENT_USER.permissionsCustom = true;
       applyAccessControl(CURRENT_USER);
     }
   });
