@@ -1222,7 +1222,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
 <section id="tab-history" class="tabpanel">
   <div class="card">
     <h3>ประวัติผู้สูงอายุและผู้มีภาวะพึ่งพิงที่เคยได้รับการดูแล</h3>
-    <p class="muted">รายชื่อผู้ที่จำหน่ายออกจากระบบเนื่องจากหายป่วย, อาการดีขึ้นไม่เข้าเกณฑ์การดูแล, เสียชีวิต หรือย้ายที่อยู่ พร้อมประวัติการเยี่ยมทั้งหมด — มองเห็นและจัดการได้เฉพาะ Admin และ CM</p>
+    <p class="muted">รายชื่อผู้ที่จำหน่ายออกจากระบบเนื่องจากหายป่วย, อาการดีขึ้นไม่เข้าเกณฑ์การดูแล, เสียชีวิต หรือย้ายที่อยู่ พร้อมประวัติการเยี่ยมทั้งหมด — มองเห็นและจัดการได้เฉพาะ Admin และ CM (กด "↩️ ดึงกลับ" เพื่อนำผู้สูงอายุที่จำหน่ายผิดพลาดกลับเข้าระบบพร้อมประวัติการเยี่ยม)</p>
     <div class="row" style="margin-top:8px;">
       <div class="field"><label>กรองตามเหตุผล</label>
         <select id="filterHistoryReason">
@@ -5476,9 +5476,35 @@ function renderHistoryTable(){
       <td>${id}</td><td>${e.name}</td><td>${e.age||'-'}</td><td>${cgName}</td>
       <td>${e.dischargeReasonLabel||'-'}</td><td>${e.dischargeDate ? formatThaiDate(e.dischargeDate,true) : '-'}</td>
       <td>${e.dischargeNote||'-'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteHistoryRecord('${id}')">🗑</button></td>
+      <td style="white-space:nowrap;"><button class="btn btn-secondary btn-sm" onclick="restoreHistoryRecord('${id}')" title="ดึงกลับเข้าระบบ">↩️ ดึงกลับ</button> <button class="btn btn-danger btn-sm" onclick="deleteHistoryRecord('${id}')">🗑</button></td>
     </tr>`;
   }).join('');
+}
+/* ดึงผู้สูงอายุที่จำหน่ายไปแล้วกลับเข้าระบบ: ย้ายข้อมูลผู้สูงอายุและประวัติการเยี่ยมทั้งหมดกลับมาที่เดิม
+   (เป็นการย้ายคืนจาก elderlyHistory/visitHistory จึงไม่มีข้อมูลสูญหาย และไม่ซ้ำซ้อน) */
+function restoreHistoryRecord(id){
+  if(blockIfReadOnly()) return;
+  const h = STATE_ELDERLY_HISTORY[id];
+  if(!h){ toast('ไม่พบข้อมูลในประวัติ','error'); return; }
+  if(STATE.elderly[id]){ toast(`รหัส ${id} มีอยู่ในระบบแล้ว ไม่สามารถดึงกลับได้ (ซ้ำกับผู้สูงอายุที่ดูแลอยู่)`,'error'); return; }
+  const visitEntries = Object.entries(STATE_VISIT_HISTORY||{}).filter(([vid,v])=>v.elderlyId===id);
+  const cg = STATE.cgs[h.cgCode];
+  let cgNote = '';
+  if(!cg) cgNote = ' ⚠️ CG เดิมไม่มีในระบบแล้ว กรุณาย้ายผู้สูงอายุไปให้ CG คนใหม่ที่หน้า "จัดการ CG" หลังดึงกลับ';
+  else if(!isCgActive(h.cgCode)) cgNote = ' ⚠️ CG เดิม ('+cg.name+') ไม่ได้อยู่ในสถานะปฏิบัติงาน กรุณาย้ายผู้สูงอายุไปให้ CG ที่ปฏิบัติงานอยู่';
+  showConfirm('ดึงกลับเข้าระบบ?', `${h.name} (${id}) — จะกลับไปอยู่ใน "จัดการผู้สูงอายุ" ของ ${cg ? cg.name : 'CG เดิม'} พร้อมประวัติการเยี่ยม ${visitEntries.length} ครั้ง${cgNote}`, ()=>{
+    const rec = Object.assign({}, h);
+    ['dischargeReason','dischargeReasonLabel','dischargeDate','dischargeNote','dischargedAt'].forEach(k=>delete rec[k]);
+    if(rec.status === 'discharged') rec.status = 'active';
+    rec.restoredAt = Date.now();
+    const updates = {};
+    updates['elderly/'+id] = rec;
+    updates['elderlyHistory/'+id] = null;
+    visitEntries.forEach(([vid,v])=>{ updates['visits/'+vid] = v; updates['visitHistory/'+vid] = null; });
+    db.ref().update(updates).then(()=>{
+      toast(`ดึง "${h.name}" กลับเข้าระบบเรียบร้อยแล้ว (พร้อมประวัติการเยี่ยม ${visitEntries.length} ครั้ง)`,'success');
+    }).catch(err=>toast('ดึงกลับไม่สำเร็จ: '+err.message,'error'));
+  });
 }
 function deleteHistoryRecord(id){
   if(blockIfReadOnly()) return;
