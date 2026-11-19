@@ -309,7 +309,9 @@ th{color:var(--muted);font-weight:600;font-size:12px;}
 .photo-slot img.ps-thumb{width:52px;height:52px;object-fit:cover;border-radius:8px;border:2px solid var(--border);}
 .photo-slot .ps-name{font-size:12px;color:var(--muted);flex-basis:100%;}
 .photo-slot .ps-time{flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;}
-.photo-slot .ps-time input[type=time]{width:auto;min-width:112px;padding:4px 8px;}
+.photo-slot .ps-time input.time-text{width:88px;padding:4px 8px;text-align:center;}
+input.time-text{text-align:center;letter-spacing:1px;}
+input.time-text.invalid{border-color:#d33 !important;background:#fff0f0;}
 .photo-slot .ps-dur{font-weight:700;color:var(--primary-dark);}
 .photo-slot input[type=file]{flex:1;min-width:180px;}
 .checkbox-group{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin-top:4px;}
@@ -746,7 +748,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     <div id="recTimeBulk" style="display:none;margin-top:12px;padding:10px 12px;border:1.5px solid #D9BFF3;border-radius:10px;background:#F8F0FF;">
       <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">⏰ เวลาปฏิบัติงานเยี่ยม (CG กระตุ้นเศรษฐกิจ / อสบ.) — ใช้ออกรายงานผลการปฏิบัติงาน</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
-        เริ่ม <input type="time" id="recBulkStart" style="width:auto;min-width:112px;"> ถึง <input type="time" id="recBulkEnd" style="width:auto;min-width:112px;">
+        เริ่ม <input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" id="recBulkStart" style="width:110px;"> ถึง <input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" id="recBulkEnd" style="width:110px;"> <span class="muted" style="font-size:12px;">(พิมพ์เอง 24 ชม. เช่น 08:30 หรือ 0830)</span>
         <button type="button" class="btn btn-secondary btn-sm" id="recBulkApplyBtn">ใช้เวลานี้กับทุกวันที่เลือกแล้ว (เขียนทับ)</button>
       </div>
       <div class="muted" style="font-size:12px;margin-top:4px;">กรอกเวลาไว้ก่อน ระบบจะใส่ให้ทุกวันที่เลือก (ปรับเวลาของแต่ละวันได้ในหัวข้อ 3) — ต้องระบุเวลาเริ่มและสิ้นสุดของทุกวัน</div>
@@ -1626,8 +1628,8 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
   <div class="field"><label>วันที่เยี่ยม</label><input type="text" id="editVisitDate" placeholder="YYYY-MM-DD"></div>
   <div class="field" style="margin-top:8px;"><label>ปัญหาสำคัญของคนไข้คนนี้คือ</label><textarea id="editVisitNote"></textarea></div>
   <div class="row" id="editVisitTimeWrap" style="display:none;margin-top:8px;">
-    <div class="field"><label>เวลาเริ่มเยี่ยม</label><input type="time" id="editVisitStart"></div>
-    <div class="field"><label>เวลาสิ้นสุด</label><input type="time" id="editVisitEnd"></div>
+    <div class="field"><label>เวลาเริ่มเยี่ยม</label><input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" id="editVisitStart"></div>
+    <div class="field"><label>เวลาสิ้นสุด</label><input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" id="editVisitEnd"></div>
   </div>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('editVisitModal')">ยกเลิก</button><button class="btn btn-primary" id="editVisitSaveBtn">บันทึก</button></div>
 </div></div>
@@ -3778,7 +3780,7 @@ document.getElementById('editVisitSaveBtn').addEventListener('click', ()=>{
   if(date > localTodayIso()){ toast('ไม่สามารถตั้งวันที่เยี่ยมล่วงหน้าได้','error'); return; }
   const upd = { visitDate:date, note };
   if(document.getElementById('editVisitTimeWrap').style.display !== 'none'){
-    const st = document.getElementById('editVisitStart').value, en = document.getElementById('editVisitEnd').value;
+    const st = normTime(document.getElementById('editVisitStart').value), en = normTime(document.getElementById('editVisitEnd').value);
     if(durationMinutes(st,en)===null){ toast('กรุณาระบุเวลาเริ่มและสิ้นสุดให้ถูกต้อง (เวลาสิ้นสุดต้องหลังเวลาเริ่ม)','error'); return; }
     upd.startTime = st; upd.endTime = en; upd.durationMin = durationMinutes(st,en);
   }
@@ -3982,6 +3984,36 @@ document.getElementById('invSource').addEventListener('change', function(){
 /* รูปถ่ายการเยี่ยม: 1 วันที่เยี่ยม = 1 รูป เก็บแยกตามวันที่ (ds -> File) เพื่อให้รูปตรงกับวันที่เยี่ยมเสมอ */
 /* เวลาปฏิบัติงานของแต่ละวันที่เยี่ยม (เฉพาะ CG กระตุ้นเศรษฐกิจ/อสบ.) ds -> {start:'HH:MM', end:'HH:MM'} */
 const REC_TIMES = {};
+/* ช่องเวลาแบบพิมพ์เอง: รับ 8:30 / 08.30 / 0830 / 830 / 8 → 'HH:MM' (ไม่ถูกต้อง → '') */
+function normTime(v){
+  v = String(v||'').trim().replace(/[.,;：]/g,':').replace(/\s+/g,'');
+  if(!v) return '';
+  let h, m;
+  if(v.includes(':')){ const p = v.split(':'); h = p[0]; m = p[1]===''||p[1]===undefined ? '0' : p[1]; if(p.length>2) return ''; }
+  else if(/^\d{1,2}$/.test(v)){ h = v; m = '0'; }
+  else if(/^\d{3,4}$/.test(v)){ h = v.slice(0,-2); m = v.slice(-2); }
+  else return '';
+  if(!/^\d{1,2}$/.test(h) || !/^\d{1,2}$/.test(m)) return '';
+  h = +h; m = +m;
+  if(h>23 || m>59) return '';
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+}
+document.addEventListener('input', e=>{
+  const el = e.target;
+  if(!el.classList || !el.classList.contains('time-text')) return;
+  let v = el.value.replace(/[^\d:.,]/g,'').replace(/[.,]/g,':');
+  if(/^\d\d$/.test(v) && +v<=23 && !(e.inputType||'').startsWith('delete')) v += ':';   /* พิมพ์ชั่วโมงครบ 2 หลัก ใส่ : ให้ */
+  el.value = v.slice(0,5);
+  el.classList.remove('invalid');
+});
+document.addEventListener('change', e=>{   /* capture: ทำให้เป็นรูป HH:MM ก่อนที่ตัวจัดการอื่นจะอ่านค่า */
+  const el = e.target;
+  if(!el.classList || !el.classList.contains('time-text')) return;
+  const raw = el.value.trim(), n = normTime(raw);
+  el.classList.toggle('invalid', !!raw && !n);
+  if(raw && !n) toast('รูปแบบเวลาไม่ถูกต้อง — พิมพ์เป็น 24 ชั่วโมง เช่น 08:30 หรือ 13:45','error');
+  el.value = n;
+}, true);
 function timeToMin(t){ const m = /^(\d{1,2}):(\d{2})$/.exec(t||''); return m ? (+m[1])*60 + (+m[2]) : null; }
 function durationMinutes(s,e){ const a = timeToMin(s), b = timeToMin(e); return (a===null || b===null || b<=a) ? null : b-a; }
 function fmtDurationTh(min){ if(min===null || min===undefined || min==='' || isNaN(min)) return '-'; const h = Math.floor(min/60), m = min%60; return h+' ชม.'+(m ? ' '+m+' นาที' : ''); }
@@ -3994,14 +4026,14 @@ function recNeedsTimes(){ const el = document.getElementById('recCg'); return !!
 function onRecTimeChange(inp){
   const ds = inp.dataset.ds, k = inp.dataset.k;
   REC_TIMES[ds] = REC_TIMES[ds] || {};
-  REC_TIMES[ds][k] = inp.value;
+  REC_TIMES[ds][k] = normTime(inp.value);
   const t = REC_TIMES[ds];
   const d = durationMinutes(t.start, t.end);
   const el = document.getElementById('psdur_'+ds);
   if(el) el.textContent = d===null ? ((t.start && t.end) ? '⚠️ เวลาสิ้นสุดต้องหลังเวลาเริ่ม' : '') : '= '+fmtDurationTh(d);
 }
 document.getElementById('recBulkApplyBtn').addEventListener('click', ()=>{
-  const s = document.getElementById('recBulkStart').value, e = document.getElementById('recBulkEnd').value;
+  const s = normTime(document.getElementById('recBulkStart').value), e = normTime(document.getElementById('recBulkEnd').value);
   if(durationMinutes(s,e)===null){ toast('กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ถูกต้อง (เวลาสิ้นสุดต้องหลังเวลาเริ่ม)','error'); return; }
   STATE.selectedDates.forEach(ds=>{ REC_TIMES[ds] = { start:s, end:e }; });
   renderRecPhotoSlots();
@@ -4030,7 +4062,7 @@ function renderRecPhotoSlots(){
   const bulkEl = document.getElementById('recTimeBulk');
   if(bulkEl) bulkEl.style.display = needTimes ? 'block' : 'none';
   if(needTimes){
-    const bs = document.getElementById('recBulkStart').value, be = document.getElementById('recBulkEnd').value;
+    const bs = normTime(document.getElementById('recBulkStart').value), be = normTime(document.getElementById('recBulkEnd').value);
     if(durationMinutes(bs,be)!==null) dates.forEach(ds=>{ if(!REC_TIMES[ds] || (!REC_TIMES[ds].start && !REC_TIMES[ds].end)) REC_TIMES[ds] = { start:bs, end:be }; });
   }
   if(!dates.length){
@@ -4044,7 +4076,7 @@ function renderRecPhotoSlots(){
       <input type="file" accept="image/*" data-ds="${ds}" onchange="onRecPhotoPicked(this)">
       <span class="ps-name">${REC_PHOTOS[ds] ? '✅ '+escHtml(REC_PHOTOS[ds].name) : 'ยังไม่ได้เลือกรูปของวันนี้'}</span>
       ${needTimes ? (()=>{ const t = REC_TIMES[ds] || {}; const d = durationMinutes(t.start, t.end);
-        return `<div class="ps-time">⏰ เริ่ม <input type="time" data-ds="${ds}" data-k="start" value="${t.start||''}" onchange="onRecTimeChange(this)"> ถึง <input type="time" data-ds="${ds}" data-k="end" value="${t.end||''}" onchange="onRecTimeChange(this)"> <span class="ps-dur" id="psdur_${ds}">${d===null ? '' : '= '+fmtDurationTh(d)}</span></div>`; })() : ''}
+        return `<div class="ps-time">⏰ เริ่ม <input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" data-ds="${ds}" data-k="start" value="${t.start||''}" onchange="onRecTimeChange(this)"> ถึง <input type="text" inputmode="numeric" maxlength="5" placeholder="เช่น 08:30" autocomplete="off" class="time-text" data-ds="${ds}" data-k="end" value="${t.end||''}" onchange="onRecTimeChange(this)"> <span class="ps-dur" id="psdur_${ds}">${d===null ? '' : '= '+fmtDurationTh(d)}</span></div>`; })() : ''}
     </div>`).join('');
   updateRecPhotoCount();
 }
