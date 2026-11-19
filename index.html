@@ -743,6 +743,14 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     <div style="margin-top:10px;" id="recQuotaBadgeWrap"><span class="quota-badge" id="recQuotaBadge">กรุณาเลือก CG และผู้สูงอายุก่อน</span></div>
     <button class="btn btn-secondary" id="openCalendarBtn" style="margin-top:10px;">🗓 เลือกวันที่</button>
     <div id="selectedDatesChips" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+    <div id="recTimeBulk" style="display:none;margin-top:12px;padding:10px 12px;border:1.5px solid #D9BFF3;border-radius:10px;background:#F8F0FF;">
+      <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">⏰ เวลาปฏิบัติงานเยี่ยม (CG กระตุ้นเศรษฐกิจ / อสบ.) — ใช้ออกรายงานผลการปฏิบัติงาน</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
+        เริ่ม <input type="time" id="recBulkStart" style="width:auto;min-width:112px;"> ถึง <input type="time" id="recBulkEnd" style="width:auto;min-width:112px;">
+        <button type="button" class="btn btn-secondary btn-sm" id="recBulkApplyBtn">ใช้เวลานี้กับทุกวันที่เลือกแล้ว (เขียนทับ)</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">กรอกเวลาไว้ก่อน ระบบจะใส่ให้ทุกวันที่เลือก (ปรับเวลาของแต่ละวันได้ในหัวข้อ 3) — ต้องระบุเวลาเริ่มและสิ้นสุดของทุกวัน</div>
+    </div>
   </div>
 
   <div class="card">
@@ -916,14 +924,6 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     </div>
     <h3 style="margin-top:16px;">6. อัปโหลดรูปภาพ (1 ครั้งที่เยี่ยม = 1 รูป)</h3>
     <p class="muted" style="margin:0 0 8px;">เลือกวันที่เยี่ยมในข้อ 2 ก่อน แล้วอัปโหลดรูปของแต่ละวันที่ในช่องด้านล่าง รูปจะถูกบันทึกตรงกับวันที่นั้น (เลือกได้เฉพาะวันที่ถึงแล้ว ห้ามบันทึกล่วงหน้า)</p>
-    <div id="recTimeBulk" style="display:none;margin-bottom:10px;padding:10px 12px;border:1.5px solid #D9BFF3;border-radius:10px;background:#F8F0FF;">
-      <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">⏰ เวลาปฏิบัติงานเยี่ยม (CG กระตุ้นเศรษฐกิจ / อสบ.) — ใช้ออกรายงานผลการปฏิบัติงาน</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
-        เริ่ม <input type="time" id="recBulkStart" style="width:auto;min-width:112px;"> ถึง <input type="time" id="recBulkEnd" style="width:auto;min-width:112px;">
-        <button type="button" class="btn btn-secondary btn-sm" id="recBulkApplyBtn">ใช้เวลานี้กับทุกวันที่เลือก</button>
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:4px;">กรอกเวลาครั้งเดียวแล้วกดปุ่ม หรือปรับเวลาของแต่ละวันในช่องด้านล่าง (ต้องระบุเวลาเริ่มและสิ้นสุดของทุกวัน)</div>
-    </div>
     <div id="recPhotoSlots"></div>
     <div class="muted" id="recPhotoCount" style="margin-top:6px;"></div>
     <button class="btn btn-primary" id="recSaveBtn" style="margin-top:12px;">💾 บันทึกการเยี่ยม</button>
@@ -1162,6 +1162,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     </div>
     <button class="btn btn-primary" id="generatePdfBtn" style="margin-top:12px;">📄 ออกรายงาน PDF</button>
     <button class="btn btn-secondary" id="generateDocxBtn" style="margin-top:12px;margin-left:8px;">📝 ออกรายงาน Word (.docx)</button>
+    <label class="checkbox-item" style="padding-left:0;margin-top:10px;"><input type="checkbox" id="pdfUseGrid"> CG กระตุ้นเศรษฐกิจ/อสบ.: ใช้แบบสรุปรวมหลายรูปต่อหน้า (8/10 รูป) แทนแบบแยกรายผู้สูงอายุ</label>
     <div class="upload-progress" id="pdfProgress"></div>
   </div>
 
@@ -1175,6 +1176,7 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     </div>
     <button class="btn btn-primary" id="generateWorkPdfBtn" style="margin-top:12px;">📄 ออกแบบรายงาน PDF</button>
     <button class="btn btn-secondary" id="generateWorkDocxBtn" style="margin-top:12px;margin-left:8px;">📝 ออกแบบรายงาน Word (.docx)</button>
+    <label class="checkbox-item" style="padding-left:0;margin-top:10px;"><input type="checkbox" id="workIncludePhotos" checked> แนบรูปภาพการเยี่ยมต่อท้ายรายงาน (แบบเดียวกับรายงานของ CG ปกติ แยกรายผู้สูงอายุ) พร้อมเวลาเริ่ม–สิ้นสุดและจำนวนนาที</label>
     <div class="upload-progress" id="workProgress"></div>
   </div>
 
@@ -3984,6 +3986,10 @@ function timeToMin(t){ const m = /^(\d{1,2}):(\d{2})$/.exec(t||''); return m ? (
 function durationMinutes(s,e){ const a = timeToMin(s), b = timeToMin(e); return (a===null || b===null || b<=a) ? null : b-a; }
 function fmtDurationTh(min){ if(min===null || min===undefined || min==='' || isNaN(min)) return '-'; const h = Math.floor(min/60), m = min%60; return h+' ชม.'+(m ? ' '+m+' นาที' : ''); }
 function fmtClockTh(t){ return t ? String(t).replace(':','.') : ''; }
+/* ข้อความเวลาเยี่ยมของการเยี่ยม 1 ครั้ง (เฉพาะที่มีการบันทึกเวลา) */
+function visitMinutes(v){ if(!v || !v.startTime || !v.endTime) return null; const d = (v.durationMin!==undefined && v.durationMin!=='' && v.durationMin!==null) ? Number(v.durationMin) : durationMinutes(v.startTime, v.endTime); return (d===null || isNaN(d)) ? null : d; }
+function visitTimeText(v){ const d = visitMinutes(v); if(d===null) return ''; return `เวลาเยี่ยม ${fmtClockTh(v.startTime)} – ${fmtClockTh(v.endTime)} น. | รวม ${d} นาที (${fmtDurationTh(d)})`; }
+function chunkTimeSummary(list){ const t = list.map(visitMinutes).filter(x=>x!==null); return t.length ? `รวมเวลาเยี่ยมในหน้านี้: ${t.reduce((a,b)=>a+b,0)} นาที (${fmtDurationTh(t.reduce((a,b)=>a+b,0))}) จาก ${t.length} ครั้ง` : ''; }
 function recNeedsTimes(){ const el = document.getElementById('recCg'); return !!(el && cgMonthlyTarget(el.value)); }
 function onRecTimeChange(inp){
   const ds = inp.dataset.ds, k = inp.dataset.k;
@@ -4000,6 +4006,7 @@ document.getElementById('recBulkApplyBtn').addEventListener('click', ()=>{
   STATE.selectedDates.forEach(ds=>{ REC_TIMES[ds] = { start:s, end:e }; });
   renderRecPhotoSlots();
 });
+['recBulkStart','recBulkEnd'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{ renderRecPhotoSlots(); }));
 const REC_PHOTOS = {};
 const REC_PHOTO_URLS = {};
 function clearRecPhoto(ds){
@@ -4021,7 +4028,11 @@ function renderRecPhotoSlots(){
   Object.keys(REC_TIMES).forEach(ds=>{ if(!dates.includes(ds)) delete REC_TIMES[ds]; });
   const needTimes = recNeedsTimes();
   const bulkEl = document.getElementById('recTimeBulk');
-  if(bulkEl) bulkEl.style.display = (needTimes && dates.length) ? 'block' : 'none';
+  if(bulkEl) bulkEl.style.display = needTimes ? 'block' : 'none';
+  if(needTimes){
+    const bs = document.getElementById('recBulkStart').value, be = document.getElementById('recBulkEnd').value;
+    if(durationMinutes(bs,be)!==null) dates.forEach(ds=>{ if(!REC_TIMES[ds] || (!REC_TIMES[ds].start && !REC_TIMES[ds].end)) REC_TIMES[ds] = { start:bs, end:be }; });
+  }
   if(!dates.length){
     wrap.innerHTML = '<p class="muted" style="margin:0;">ยังไม่ได้เลือกวันที่เยี่ยม</p>';
     updateRecPhotoCount();
@@ -5758,6 +5769,7 @@ function buildVisitBlockHTML(v, elderly, cg, imgW, imgH, fontScale){
     <div style="flex:1;font-size:${baseFont}px;line-height:1.55;color:#2A1B3D;">
       <div style="font-weight:700;font-size:${titleFont}px;color:#55307F;">${elderly.name} <span style="font-weight:400;color:#6E5D86;font-size:${baseFont}px;">(วันที่ ${formatThaiDate(v.visitDate)})</span></div>
       <div>CG ผู้เยี่ยม: ${cg?cg.name:'-'}</div>
+      ${visitTimeText(v) ? `<div style="font-weight:700;color:#55307F;">⏰ ${visitTimeText(v)}</div>` : ''}
       <div>ความดัน ${bpText} mmHg &nbsp;|&nbsp; ชีพจร ${prText} &nbsp;|&nbsp; อัตราหายใจ ${rrText} &nbsp;|&nbsp; อุณหภูมิ ${tText}°C &nbsp;|&nbsp; น้ำหนัก ${wtText} กก.</div>
       <div>คะแนนประเมิน ADL ครั้งนี้: ${adlText}${healthStatusText ? ` &nbsp;|&nbsp; ภาวะสุขภาพครั้งนี้: ${healthStatusText}` : ''}${ltcGroupText ? ` &nbsp;|&nbsp; กลุ่ม: ${ltcGroupText}` : ''}</div>
       <div>ยา: ${medLabel} &nbsp;|&nbsp; กิจวัตร: ${dailyLabel} &nbsp;|&nbsp; ขับถ่าย: ${elimLabel}</div>
@@ -5810,6 +5822,7 @@ function buildPdfPageHTML(elderly, cg, visitsChunk, monthLabel, yearBE, shrink){
     <div style="margin:6px 24px 0;background:#EEDDFF;border-radius:8px;padding:10px 14px;">
       <div style="font-size:12.5px;font-weight:700;color:#7B4AB5;margin-bottom:4px;">📝 สรุปรายงาน</div>
       <div style="font-size:11px;color:#2A1B3D;">คะแนน ADL แต่ละครั้ง: ${adlSummary}</div>
+      ${chunkTimeSummary(visitsChunk) ? `<div style="font-size:11px;color:#2A1B3D;margin-top:2px;">⏰ ${chunkTimeSummary(visitsChunk)}</div>` : ''}
       <div style="font-size:11px;color:#2A1B3D;margin-top:2px;">ปัญหาสำคัญที่พบในช่วงนี้: ${notedIssues.length ? notedIssues.join(' | ') : 'ไม่พบปัญหาเด่นชัด'}</div>
     </div>
 
@@ -5878,6 +5891,7 @@ function buildVisitCellHTML(v, rowH){
     <div style="flex:1;min-width:0;font-size:${fs}px;line-height:1.42;color:#2A1B3D;overflow:hidden;">
       <div style="font-weight:700;font-size:${fs+1.6}px;color:#55307F;">${escHtml(e.name)}</div>
       <div style="color:#6E5D86;">วันที่ ${formatThaiDate(v.visitDate)}</div>
+      ${(v.startTime && v.endTime) ? `<div style="color:#55307F;font-weight:600;">⏰ เวลา ${fmtClockTh(v.startTime)}–${fmtClockTh(v.endTime)} น.${(v.durationMin||durationMinutes(v.startTime,v.endTime)) ? ' ('+fmtDurationTh(v.durationMin||durationMinutes(v.startTime,v.endTime))+')' : ''}</div>` : ''}
       <div>BP ${bp} | PR ${vit.pr||'-'} | T ${vit.temp||'-'}°C</div>
       <div>ADL ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.ltcGroup ? ` | ${escHtml(a.ltcGroup)}` : ''}</div>
       ${care ? `<div>กิจกรรม: ${escHtml(care)}</div>` : ''}
@@ -5951,7 +5965,7 @@ function collectVisitReportPages(){
     const cgVisits = byCg[cgCode];
     const cgObj = STATE.cgs[cgCode];
     const typeInfo = CG_TYPES[cgTypeOf(cgObj)];
-    if(typeInfo.monthly){
+    if(typeInfo.monthly && document.getElementById('pdfUseGrid').checked){
       const sorted = cgVisits.slice().sort((a,b)=> a.visitDate.localeCompare(b.visitDate) || String((STATE.elderly[a.elderlyId]||{}).name||'').localeCompare(String((STATE.elderly[b.elderlyId]||{}).name||''),'th'));
       const chunks = balancedChunks(sorted, typeInfo.perPage);
       chunks.forEach((chunk,i)=> pages.push({ kind:'grid', cg:cgObj, info:typeInfo, chunk, pageNo:i+1, pageTotal:chunks.length, total:sorted.length }));
@@ -6183,6 +6197,7 @@ async function dxElderlyPage(ctx, p, monthLabel, yBE){
     const items = [
       { runs:[{ t: elderly.name, b:true, color:DX_TITLE, sz: sz+1.5 }, { t:`  (วันที่ ${formatThaiDate(v.visitDate)})`, color:DX_MUTED }] },
       { runs:[{ t:`CG ผู้เยี่ยม: ${cgName}` }], optional:true },
+      ...(visitTimeText(v) ? [{ runs:[{ t:visitTimeText(v), b:true, color:DX_TITLE }] }] : []),
       { runs:[{ t:`ความดัน ${bp} mmHg | ชีพจร ${vit.pr||'-'} | อัตราหายใจ ${vit.rr||'-'} | อุณหภูมิ ${vit.temp||'-'}°C | น้ำหนัก ${vit.weight||'-'} กก.` }] },
       { runs:[{ t:`คะแนน ADL ครั้งนี้: ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.healthStatus ? ` | ภาวะสุขภาพ: ${a.healthStatus}` : ''}${a.ltcGroup ? ` | กลุ่ม: ${a.ltcGroup}` : ''}` }] },
       { runs:[{ t:`ยา: ${MEDICATION_LABELS[a.medication]||'-'} | กิจวัตร: ${DAILY_ACTIVITY_LABELS[a.dailyActivity]||'-'} | ขับถ่าย: ${ELIMINATION_LABELS[a.elimination]||'-'}` }] },
@@ -6215,6 +6230,7 @@ async function dxElderlyPage(ctx, p, monthLabel, yBE){
     dxGap(Math.max(100, DX_GRID_H - gridUsed + 100)) +
     dxSummaryBox([
       'คะแนน ADL แต่ละครั้ง: ' + (adlScores.length ? adlScores.join(', ') + ' คะแนน' : '-'),
+      ...(chunkTimeSummary(chunk) ? [chunkTimeSummary(chunk)] : []),
       'ปัญหาสำคัญที่พบในช่วงนี้: ' + (notedIssues.length ? dxCut(notedIssues.join(' | '), 300) : 'ไม่พบปัญหาเด่นชัด')
     ]) + dxGap(160) + dxSignBlock(cgName) + dxGap(100) + dxFooter(cgName);
 }
@@ -6249,6 +6265,7 @@ async function dxGridPage(ctx, p, monthLabel, yBE){
         const items = [
           { runs:[{ t:e.name, b:true, color:DX_TITLE, sz: sz+1.5 }] },
           { runs:[{ t:`วันที่ ${formatThaiDate(v.visitDate)} | ADL ${(a.adlScore!==undefined && a.adlScore!=='') ? a.adlScore : '-'}${a.ltcGroup ? ' | '+a.ltcGroup : ''}`, color:DX_MUTED }] },
+          ...((v.startTime && v.endTime) ? [{ runs:[{ t:`เวลา ${fmtClockTh(v.startTime)}–${fmtClockTh(v.endTime)} น. (${fmtDurationTh(v.durationMin||durationMinutes(v.startTime,v.endTime))})`, b:true, color:DX_TITLE }] }] : []),
           { runs:[{ t:`BP ${bp} | PR ${vit.pr||'-'} | T ${vit.temp||'-'}°C` }] },
           { runs:[{ t:'กิจกรรม: ' }, { t: care }], cuttable:true, maxLines:2, optional: !care },
           { runs:[{ t:'ปัญหา: ', b:true }, { t: dxCut(note, 120) }], cuttable:true, maxLines:2 }
@@ -6390,8 +6407,19 @@ function collectWorkReport(){
   const totalMin = rows.reduce((a,r)=>a + (typeof r.dur==='number' ? r.dur : 0), 0);
   const chunks = balancedChunks(rows, WORK_ROWS_PER_PAGE);
   const monthLabel = TH_MONTHS_FULL[m-1];
-  const typeLabel = CG_TYPES[cgTypeOf(cg)].label;
-  return { cgCode, cg, monthLabel, yBE, pages: chunks.map((chunk,i)=>({ kind:'work', cg, cgName: cg.name, typeLabel, chunk, pageNo:i+1, pageTotal:chunks.length, total:rows.length, totalMin, monthLabel, yBE })) };
+  const typeInfo = CG_TYPES[cgTypeOf(cg)];
+  const typeLabel = typeInfo.label;
+  const photoPages = [];
+  if(document.getElementById('workIncludePhotos').checked){
+    const byEld = {};
+    visits.forEach(v=>{ (byEld[v.elderlyId] = byEld[v.elderlyId]||[]).push(v); });
+    Object.keys(byEld).sort().forEach(eid=>{
+      const elderly = STATE.elderly[eid]; if(!elderly) return;
+      const list = byEld[eid].sort((a,b)=>a.visitDate.localeCompare(b.visitDate) || String(a.startTime||'').localeCompare(String(b.startTime||'')));
+      balancedChunks(list, 4).forEach(chunk=> photoPages.push({ kind:'elderly', elderly, cg, chunk }));
+    });
+  }
+  return { cgCode, cg, monthLabel, yBE, pages: [...chunks.map((chunk,i)=>({ kind:'work', cg, cgName: cg.name, typeLabel, chunk, pageNo:i+1, pageTotal:chunks.length, total:rows.length, totalMin, monthLabel, yBE })), ...photoPages] };
 }
 function workItemsText(items){ return items.map(it=>it.runs.map(r=>r.t).join('')); }
 
@@ -6485,9 +6513,15 @@ document.getElementById('generateWorkPdfBtn').addEventListener('click', async ()
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
     for(let i=0;i<col.pages.length;i++){
       progressEl.textContent = `กำลังสร้างหน้า ${i+1}/${col.pages.length}`;
-      root.innerHTML = buildWorkPageHTML(col.pages[i]);
-      await new Promise(r=>setTimeout(r,250));
-      const canvas = await html2canvas(root.firstElementChild, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+      const wp = col.pages[i];
+      const renderPage = (shrink)=>{ root.innerHTML = wp.kind==='grid' ? buildCgGridPageHTML(wp, col.monthLabel, col.yBE, shrink) : (wp.kind==='elderly' ? buildPdfPageHTML(wp.elderly, wp.cg, wp.chunk, col.monthLabel, col.yBE, shrink) : buildWorkPageHTML(wp)); };
+      renderPage(1);
+      await new Promise(r=>setTimeout(r,300));
+      let target = root.firstElementChild;
+      for(let shrink=0.95; wp.kind!=='work' && target.scrollHeight > target.clientHeight + 1 && shrink >= 0.6; shrink -= 0.05){
+        renderPage(shrink); await new Promise(r=>setTimeout(r,120)); target = root.firstElementChild;
+      }
+      const canvas = await html2canvas(target, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
       if(i>0) pdf.addPage();
       pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297);
     }
