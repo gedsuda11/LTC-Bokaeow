@@ -308,6 +308,9 @@ th{color:var(--muted);font-weight:600;font-size:12px;}
 .photo-slot .ps-date{font-weight:700;color:var(--primary-dark);min-width:120px;}
 .photo-slot img.ps-thumb{width:52px;height:52px;object-fit:cover;border-radius:8px;border:2px solid var(--border);}
 .photo-slot .ps-name{font-size:12px;color:var(--muted);flex-basis:100%;}
+.photo-slot .ps-time{flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;}
+.photo-slot .ps-time input[type=time]{width:auto;min-width:112px;padding:4px 8px;}
+.photo-slot .ps-dur{font-weight:700;color:var(--primary-dark);}
 .photo-slot input[type=file]{flex:1;min-width:180px;}
 .checkbox-group{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin-top:4px;}
 .checkbox-item{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:400;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s;}
@@ -913,6 +916,14 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     </div>
     <h3 style="margin-top:16px;">6. อัปโหลดรูปภาพ (1 ครั้งที่เยี่ยม = 1 รูป)</h3>
     <p class="muted" style="margin:0 0 8px;">เลือกวันที่เยี่ยมในข้อ 2 ก่อน แล้วอัปโหลดรูปของแต่ละวันที่ในช่องด้านล่าง รูปจะถูกบันทึกตรงกับวันที่นั้น (เลือกได้เฉพาะวันที่ถึงแล้ว ห้ามบันทึกล่วงหน้า)</p>
+    <div id="recTimeBulk" style="display:none;margin-bottom:10px;padding:10px 12px;border:1.5px solid #D9BFF3;border-radius:10px;background:#F8F0FF;">
+      <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">⏰ เวลาปฏิบัติงานเยี่ยม (CG กระตุ้นเศรษฐกิจ / อสบ.) — ใช้ออกรายงานผลการปฏิบัติงาน</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
+        เริ่ม <input type="time" id="recBulkStart" style="width:auto;min-width:112px;"> ถึง <input type="time" id="recBulkEnd" style="width:auto;min-width:112px;">
+        <button type="button" class="btn btn-secondary btn-sm" id="recBulkApplyBtn">ใช้เวลานี้กับทุกวันที่เลือก</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">กรอกเวลาครั้งเดียวแล้วกดปุ่ม หรือปรับเวลาของแต่ละวันในช่องด้านล่าง (ต้องระบุเวลาเริ่มและสิ้นสุดของทุกวัน)</div>
+    </div>
     <div id="recPhotoSlots"></div>
     <div class="muted" id="recPhotoCount" style="margin-top:6px;"></div>
     <button class="btn btn-primary" id="recSaveBtn" style="margin-top:12px;">💾 บันทึกการเยี่ยม</button>
@@ -1152,6 +1163,19 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
     <button class="btn btn-primary" id="generatePdfBtn" style="margin-top:12px;">📄 ออกรายงาน PDF</button>
     <button class="btn btn-secondary" id="generateDocxBtn" style="margin-top:12px;margin-left:8px;">📝 ออกรายงาน Word (.docx)</button>
     <div class="upload-progress" id="pdfProgress"></div>
+  </div>
+
+  <div class="card">
+    <h3>📋 แบบรายงานผลการปฏิบัติงานของผู้ช่วยเหลือดูแลผู้สูงอายุที่มีภาวะพึ่งพิง (care giver)</h3>
+    <p class="muted">สำหรับ CG กระตุ้นเศรษฐกิจและ อสบ. — สรุปการเยี่ยมรายเดือนตามแบบฟอร์มกระดาษ (วันที่ / กิจกรรมการปฏิบัติงาน / ระยะเวลาการดูแล / เวลาเริ่ม–สิ้นสุด / ช่องลงชื่อ CG และผู้รับรอง) ใช้เวลาที่บันทึกในหน้า "บันทึกการเยี่ยม"</p>
+    <div class="row">
+      <div class="field"><label>เดือน</label><select id="workMonth"></select></div>
+      <div class="field"><label>ปี พ.ศ.</label><select id="workYear"></select></div>
+      <div class="field"><label>CG (กระตุ้นเศรษฐกิจ / อสบ.)</label><select id="workCg"><option value="">-- เลือก CG --</option></select></div>
+    </div>
+    <button class="btn btn-primary" id="generateWorkPdfBtn" style="margin-top:12px;">📄 ออกแบบรายงาน PDF</button>
+    <button class="btn btn-secondary" id="generateWorkDocxBtn" style="margin-top:12px;margin-left:8px;">📝 ออกแบบรายงาน Word (.docx)</button>
+    <div class="upload-progress" id="workProgress"></div>
   </div>
 
   <div class="card">
@@ -1599,6 +1623,10 @@ tr.cg-inactive > td:nth-child(2){color:#6E5D86;}
   <input type="hidden" id="editVisitId">
   <div class="field"><label>วันที่เยี่ยม</label><input type="text" id="editVisitDate" placeholder="YYYY-MM-DD"></div>
   <div class="field" style="margin-top:8px;"><label>ปัญหาสำคัญของคนไข้คนนี้คือ</label><textarea id="editVisitNote"></textarea></div>
+  <div class="row" id="editVisitTimeWrap" style="display:none;margin-top:8px;">
+    <div class="field"><label>เวลาเริ่มเยี่ยม</label><input type="time" id="editVisitStart"></div>
+    <div class="field"><label>เวลาสิ้นสุด</label><input type="time" id="editVisitEnd"></div>
+  </div>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('editVisitModal')">ยกเลิก</button><button class="btn btn-primary" id="editVisitSaveBtn">บันทึก</button></div>
 </div></div>
 
@@ -3027,6 +3055,13 @@ function renderCgSelects(){
     el.innerHTML = keepFirst + list;
     if(prevVal) el.value = prevVal;
   });
+  /* รายงานผลการปฏิบัติงาน: เลือกได้เฉพาะ CG กระตุ้นเศรษฐกิจ / อสบ. */
+  const workCgEl = document.getElementById('workCg');
+  if(workCgEl){
+    const prevWork = workCgEl.value;
+    workCgEl.innerHTML = '<option value="">-- เลือก CG --</option>' + mkOpts(allCodes.filter(c=>cgMonthlyTarget(c)), true);
+    if(prevWork) workCgEl.value = prevWork;
+  }
   const recCgEl = document.getElementById('recCg');
   const prevRecCg = recCgEl.value;
   recCgEl.innerHTML = optsNoCode;
@@ -3170,7 +3205,7 @@ function renderRecInfoCard(){
   renderRecQuotaBadge();
   renderRecAdlAssessment();
 }
-document.getElementById('recCg').addEventListener('change', ()=>{ renderRecElderlyOptions(); renderRecQuotaBadge(); });
+document.getElementById('recCg').addEventListener('change', ()=>{ renderRecElderlyOptions(); renderRecQuotaBadge(); renderRecPhotoSlots(); });
 
 /* ป้ายสถานะจำนวนครั้งที่ต้องเยี่ยม/เยี่ยมแล้ว/คงเหลือ ของผู้สูงอายุที่เลือก ในเดือน/ปีที่เลือก
    เกณฑ์สี: ครบตามเป้าหมาย = เขียว | <25% = แดง | 25-49% = ส้ม | 50-74% = เหลือง | >=75% = ฟ้า */
@@ -3698,6 +3733,10 @@ function editVisit(vid){
   document.getElementById('editVisitId').value = vid;
   document.getElementById('editVisitDate').value = v.visitDate;
   document.getElementById('editVisitNote').value = v.note||'';
+  const timeWrap = document.getElementById('editVisitTimeWrap');
+  timeWrap.style.display = cgMonthlyTarget(v.cgCode) ? 'flex' : 'none';
+  document.getElementById('editVisitStart').value = v.startTime || '';
+  document.getElementById('editVisitEnd').value = v.endTime || '';
   openModal('editVisitModal');
 }
 
@@ -3735,7 +3774,13 @@ document.getElementById('editVisitSaveBtn').addEventListener('click', ()=>{
   const note = document.getElementById('editVisitNote').value.trim();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)','error'); return; }
   if(date > localTodayIso()){ toast('ไม่สามารถตั้งวันที่เยี่ยมล่วงหน้าได้','error'); return; }
-  db.ref('visits/'+vid).update({visitDate:date, note}).then(()=>{
+  const upd = { visitDate:date, note };
+  if(document.getElementById('editVisitTimeWrap').style.display !== 'none'){
+    const st = document.getElementById('editVisitStart').value, en = document.getElementById('editVisitEnd').value;
+    if(durationMinutes(st,en)===null){ toast('กรุณาระบุเวลาเริ่มและสิ้นสุดให้ถูกต้อง (เวลาสิ้นสุดต้องหลังเวลาเริ่ม)','error'); return; }
+    upd.startTime = st; upd.endTime = en; upd.durationMin = durationMinutes(st,en);
+  }
+  db.ref('visits/'+vid).update(upd).then(()=>{
     toast('แก้ไขสำเร็จ','success'); closeModal('editVisitModal');
   });
 });
@@ -3933,6 +3978,28 @@ document.getElementById('invSource').addEventListener('change', function(){
 });
 
 /* รูปถ่ายการเยี่ยม: 1 วันที่เยี่ยม = 1 รูป เก็บแยกตามวันที่ (ds -> File) เพื่อให้รูปตรงกับวันที่เยี่ยมเสมอ */
+/* เวลาปฏิบัติงานของแต่ละวันที่เยี่ยม (เฉพาะ CG กระตุ้นเศรษฐกิจ/อสบ.) ds -> {start:'HH:MM', end:'HH:MM'} */
+const REC_TIMES = {};
+function timeToMin(t){ const m = /^(\d{1,2}):(\d{2})$/.exec(t||''); return m ? (+m[1])*60 + (+m[2]) : null; }
+function durationMinutes(s,e){ const a = timeToMin(s), b = timeToMin(e); return (a===null || b===null || b<=a) ? null : b-a; }
+function fmtDurationTh(min){ if(min===null || min===undefined || min==='' || isNaN(min)) return '-'; const h = Math.floor(min/60), m = min%60; return h+' ชม.'+(m ? ' '+m+' นาที' : ''); }
+function fmtClockTh(t){ return t ? String(t).replace(':','.') : ''; }
+function recNeedsTimes(){ const el = document.getElementById('recCg'); return !!(el && cgMonthlyTarget(el.value)); }
+function onRecTimeChange(inp){
+  const ds = inp.dataset.ds, k = inp.dataset.k;
+  REC_TIMES[ds] = REC_TIMES[ds] || {};
+  REC_TIMES[ds][k] = inp.value;
+  const t = REC_TIMES[ds];
+  const d = durationMinutes(t.start, t.end);
+  const el = document.getElementById('psdur_'+ds);
+  if(el) el.textContent = d===null ? ((t.start && t.end) ? '⚠️ เวลาสิ้นสุดต้องหลังเวลาเริ่ม' : '') : '= '+fmtDurationTh(d);
+}
+document.getElementById('recBulkApplyBtn').addEventListener('click', ()=>{
+  const s = document.getElementById('recBulkStart').value, e = document.getElementById('recBulkEnd').value;
+  if(durationMinutes(s,e)===null){ toast('กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ถูกต้อง (เวลาสิ้นสุดต้องหลังเวลาเริ่ม)','error'); return; }
+  STATE.selectedDates.forEach(ds=>{ REC_TIMES[ds] = { start:s, end:e }; });
+  renderRecPhotoSlots();
+});
 const REC_PHOTOS = {};
 const REC_PHOTO_URLS = {};
 function clearRecPhoto(ds){
@@ -3951,6 +4018,10 @@ function renderRecPhotoSlots(){
   if(!wrap) return;
   const dates = STATE.selectedDates.slice().sort();
   Object.keys(REC_PHOTOS).forEach(ds=>{ if(!dates.includes(ds)) clearRecPhoto(ds); });
+  Object.keys(REC_TIMES).forEach(ds=>{ if(!dates.includes(ds)) delete REC_TIMES[ds]; });
+  const needTimes = recNeedsTimes();
+  const bulkEl = document.getElementById('recTimeBulk');
+  if(bulkEl) bulkEl.style.display = (needTimes && dates.length) ? 'block' : 'none';
   if(!dates.length){
     wrap.innerHTML = '<p class="muted" style="margin:0;">ยังไม่ได้เลือกวันที่เยี่ยม</p>';
     updateRecPhotoCount();
@@ -3961,6 +4032,8 @@ function renderRecPhotoSlots(){
       ${REC_PHOTO_URLS[ds] ? `<img class="ps-thumb" src="${REC_PHOTO_URLS[ds]}" alt="">` : ''}
       <input type="file" accept="image/*" data-ds="${ds}" onchange="onRecPhotoPicked(this)">
       <span class="ps-name">${REC_PHOTOS[ds] ? '✅ '+escHtml(REC_PHOTOS[ds].name) : 'ยังไม่ได้เลือกรูปของวันนี้'}</span>
+      ${needTimes ? (()=>{ const t = REC_TIMES[ds] || {}; const d = durationMinutes(t.start, t.end);
+        return `<div class="ps-time">⏰ เริ่ม <input type="time" data-ds="${ds}" data-k="start" value="${t.start||''}" onchange="onRecTimeChange(this)"> ถึง <input type="time" data-ds="${ds}" data-k="end" value="${t.end||''}" onchange="onRecTimeChange(this)"> <span class="ps-dur" id="psdur_${ds}">${d===null ? '' : '= '+fmtDurationTh(d)}</span></div>`; })() : ''}
     </div>`).join('');
   updateRecPhotoCount();
 }
@@ -4083,6 +4156,13 @@ document.getElementById('recSaveBtn').addEventListener('click', async ()=>{
   if(missingPhoto.length){
     toast(`1 ครั้งที่เยี่ยมต้องมี 1 รูป — ยังไม่ได้เลือกรูปของวันที่: ${missingPhoto.map(d=>formatThaiDate(d,true)).join(', ')}`,'error'); return;
   }
+  const needTimes = !!cgMonthlyTarget(cgCode);   /* CG กระตุ้นเศรษฐกิจ/อสบ. ต้องระบุเวลาเยี่ยมทุกวัน */
+  if(needTimes){
+    const badTime = dates.filter(d=>{ const t = REC_TIMES[d]; return !t || durationMinutes(t.start, t.end)===null; });
+    if(badTime.length){
+      toast(`ต้องระบุเวลาเริ่ม–สิ้นสุดการเยี่ยมของทุกวัน (เวลาสิ้นสุดต้องหลังเวลาเริ่ม) — ยังไม่ครบ: ${badTime.map(d=>formatThaiDate(d,true)).join(', ')}`,'error'); return;
+    }
+  }
   const adlScoreRaw = document.getElementById('recAdlScore').value;
   let adlScore = null;
   if(adlScoreRaw !== ''){
@@ -4149,7 +4229,8 @@ document.getElementById('recSaveBtn').addEventListener('click', async ()=>{
           cgCode, cgName: cg.name,
           photoUrl: url, note: note||'', otherSupport: otherSupport||'', supportItems: supportItems||[],
           pdfMode: elderly.pdfMode||'normal',
-          assessment
+          assessment,
+          ...(needTimes ? { startTime: REC_TIMES[visitDates[i]].start, endTime: REC_TIMES[visitDates[i]].end, durationMin: durationMinutes(REC_TIMES[visitDates[i]].start, REC_TIMES[visitDates[i]].end) } : {})
         });
         successCount++;
       }catch(imgErr){
@@ -4164,6 +4245,7 @@ document.getElementById('recSaveBtn').addEventListener('click', async ()=>{
       toast(`บันทึกสำเร็จ ${successCount}/${files.length} รูป — ไม่สำเร็จ ${failedDates.length} รูป (วันที่: ${failedDates.map(d=>formatThaiDate(d,true)).join(', ')}) กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองอัปโหลดรูปที่เหลือใหม่อีกครั้ง`,'error');
     }
     Object.keys(REC_PHOTOS).forEach(clearRecPhoto);
+    Object.keys(REC_TIMES).forEach(k=>delete REC_TIMES[k]);
     document.getElementById('recNote').value='';
     document.getElementById('recOtherSupport').value='';
     document.getElementById('recSupportList').innerHTML='';
@@ -6211,7 +6293,7 @@ async function buildVisitReportDocx(pages, monthLabel, yBE, onProgress){
     if(onProgress) onProgress(i+1, pages.length);
     const p = pages[i];
     if(i > 0) body += dxPageBreak();
-    body += p.kind === 'grid' ? await dxGridPage(ctx, p, monthLabel, yBE) : await dxElderlyPage(ctx, p, monthLabel, yBE);
+    body += p.kind === 'work' ? await dxWorkPage(ctx, p) : (p.kind === 'grid' ? await dxGridPage(ctx, p, monthLabel, yBE) : await dxElderlyPage(ctx, p, monthLabel, yBE));
   }
   body += dxGap(20);
   const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
@@ -6254,6 +6336,184 @@ document.getElementById('generateDocxBtn').addEventListener('click', async ()=>{
   }
 });
 
+
+/* =============================================================
+   แบบรายงานผลการปฏิบัติงานของผู้ช่วยเหลือดูแลผู้สูงอายุที่มีภาวะพึ่งพิง (care giver)
+   สำหรับ CG กระตุ้นเศรษฐกิจ / อสบ. — ตารางตามแบบฟอร์มกระดาษ ออกเป็น PDF และ Word
+============================================================= */
+const WORK_ORG_LINE = 'องค์การบริหารส่วนตำบลบ่อแก้ว อำเภอบ้านม่วง จังหวัดสกลนคร';
+const WORK_ROWS_PER_PAGE = 5;
+const workMonthSel = document.getElementById('workMonth');
+const workYearSel = document.getElementById('workYear');
+fillMonthYearSelects(workMonthSel, workYearSel);
+
+/* บรรทัดข้อความของการเยี่ยม 1 ครั้ง (รูปแบบเดียวกับ dxFitLines: runs/cuttable/optional) */
+function workRowItems(v, no){
+  const e = STATE.elderly[v.elderlyId] || {};
+  const a = v.assessment || {}, vit = a.vitals || {};
+  const village = (VILLAGES||[]).find(x=>String(x.moo)===String(e.moo));
+  const addr = `บ้านเลขที่ ${e.houseNo||'-'} หมู่ ${e.moo||'-'}${village ? ' '+village.name : ''}`;
+  const grp = a.ltcGroup || ((typeof getAdlBarthelInfo==='function' && getAdlBarthelInfo(e)) || {}).group || '';
+  const grpLine = 'ผู้ป่วยมีภาวะพึ่งพิง' + (grp ? (/^กลุ่ม/.test(grp) ? ' อยู่ใน'+grp : ' กลุ่ม '+grp) : '');
+  const food = FOODTYPE_LABELS[a.foodType] || FEEDING_LABELS[a.feedingMethod] || '-';
+  const care = (a.careActivities||[]).map(c=>CARE_ACTIVITY_LABELS[c]).filter(Boolean).join(', ');
+  const note = (v.note||'').trim();
+  const bp = (vit.bpSys || vit.bpDia) ? `${vit.bpSys||'-'}/${vit.bpDia||'-'}` : '-';
+  const cut = (s,n)=> (s && s.length>n) ? s.slice(0,n-1)+'…' : (s||'');
+  return [
+    { runs:[{ t:`${no}. ${v.elderlyName || e.name || '-'}`, b:true }] },
+    { runs:[{ t: addr }] },
+    { runs:[{ t: grpLine }] },
+    { runs:[{ t:`อาหาร: ${food} | ยา: ${MEDICATION_LABELS[a.medication]||'-'}` }] },
+    { runs:[{ t: cut(`${DAILY_ACTIVITY_LABELS[a.dailyActivity]||'-'} | ระบบขับถ่าย: ${ELIMINATION_LABELS[a.elimination]||'-'}`, 70) }] },
+    ...(care ? [{ runs:[{ t:'กิจกรรม: ' }, { t: cut(care, 85) }], cuttable:true, maxLines:2 }] : []),
+    ...(note ? [{ runs:[{ t:'ปัญหา: ', b:true }, { t: cut(note, 55) }], cuttable:true, optional:true }] : []),
+    { runs:[{ t:`BP ${bp}  P ${vit.pr||'-'}${vit.temp ? '  T '+vit.temp : ''}` }] }
+  ];
+}
+function collectWorkReport(){
+  const m = parseInt(workMonthSel.value,10), yBE = parseInt(workYearSel.value,10);
+  const cgCode = document.getElementById('workCg').value;
+  if(!cgCode){ toast('กรุณาเลือก CG (กระตุ้นเศรษฐกิจ / อสบ.)','error'); return null; }
+  const cg = STATE.cgs[cgCode];
+  const visits = Object.values(STATE.visits||{}).filter(v=>{
+    const [vy,vm] = (v.visitDate||'0000-01-01').split('-').map(Number);
+    return v.cgCode===cgCode && vm===m && beYear(vy)===yBE;
+  }).sort((a,b)=> a.visitDate.localeCompare(b.visitDate) || String(a.startTime||'').localeCompare(String(b.startTime||'')));
+  if(!visits.length){ toast('ไม่พบข้อมูลการเยี่ยมของ CG คนนี้ในเดือนที่เลือก','error'); return null; }
+  const rows = visits.map((v,i)=>{
+    const dur = (v.durationMin!==undefined && v.durationMin!=='') ? v.durationMin : durationMinutes(v.startTime, v.endTime);
+    return { date: formatThaiDate(v.visitDate,true), items: workRowItems(v,i+1), dur, start: v.startTime||'', end: v.endTime||'' };
+  });
+  const noTime = rows.filter(r=>!r.start || !r.end).length;
+  if(noTime) toast(`มี ${noTime} รายการที่ยังไม่ได้ระบุเวลาเยี่ยม (ช่องเวลาจะว่าง) — แก้ไขได้ที่หน้า "บันทึกการเยี่ยม"`,'error');
+  const totalMin = rows.reduce((a,r)=>a + (typeof r.dur==='number' ? r.dur : 0), 0);
+  const chunks = balancedChunks(rows, WORK_ROWS_PER_PAGE);
+  const monthLabel = TH_MONTHS_FULL[m-1];
+  const typeLabel = CG_TYPES[cgTypeOf(cg)].label;
+  return { cgCode, cg, monthLabel, yBE, pages: chunks.map((chunk,i)=>({ kind:'work', cg, cgName: cg.name, typeLabel, chunk, pageNo:i+1, pageTotal:chunks.length, total:rows.length, totalMin, monthLabel, yBE })) };
+}
+function workItemsText(items){ return items.map(it=>it.runs.map(r=>r.t).join('')); }
+
+function buildWorkPageHTML(p){
+  const cert = STATE.reportCertifiers[STATE.activeCertifierId] || {};
+  const ROW_H = 134;
+  const bd = '1.2px solid #222';
+  const th = (t,w)=>`<th style="border:${bd};width:${w}px;padding:4px 3px;font-size:11px;font-weight:700;text-align:center;vertical-align:middle;">${t}</th>`;
+  const rows = p.chunk.map(r=>{
+    const lines = r.items.map((it,i)=>`<div style="${it.runs[0].b ? 'font-weight:700;' : ''}">${it.runs.map(x=>x.b ? `<b>${escHtml(x.t)}</b>` : escHtml(x.t)).join('')}</div>`).join('');
+    return `<tr style="height:${ROW_H}px;">
+      <td style="border:${bd};padding:4px 3px;font-size:10.5px;text-align:center;vertical-align:top;">${escHtml(r.date)}</td>
+      <td style="border:${bd};padding:0;vertical-align:top;"><div style="height:${ROW_H-2}px;overflow:hidden;padding:4px 6px;font-size:10px;line-height:1.38;">${lines}</div></td>
+      <td style="border:${bd};padding:4px 3px;font-size:10.5px;text-align:center;vertical-align:top;">${r.dur!==null && r.dur!==undefined ? fmtDurationTh(r.dur) : ''}</td>
+      <td style="border:${bd};padding:4px 3px;font-size:10.5px;text-align:center;vertical-align:top;line-height:1.7;">${fmtClockTh(r.start)}<br>${fmtClockTh(r.end)}</td>
+      <td style="border:${bd};"></td><td style="border:${bd};"></td></tr>`;
+  });
+  while(rows.length < WORK_ROWS_PER_PAGE) rows.push(`<tr style="height:${ROW_H}px;">${('<td style="border:'+bd+';"></td>').repeat(6)}</tr>`);
+  const last = p.pageNo === p.pageTotal;
+  return `
+  <div style="width:754px;height:1083px;box-sizing:border-box;padding:26px 28px 14px;font-family:'Sarabun',sans-serif;background:#fff;color:#111;display:flex;flex-direction:column;">
+    <div style="text-align:center;font-size:14.5px;font-weight:700;line-height:1.5;">แบบรายงานผลการปฏิบัติงานของผู้ช่วยเหลือดูแลผู้สูงอายุที่มีภาวะพึ่งพิง (care giver)</div>
+    <div style="text-align:center;font-size:12.5px;line-height:1.55;">${escHtml(WORK_ORG_LINE)}</div>
+    <div style="text-align:center;font-size:12.5px;line-height:1.55;">ประจำเดือน <b>${p.monthLabel}</b> พ.ศ. <b>${p.yBE}</b></div>
+    <div style="text-align:center;font-size:12.5px;line-height:1.55;margin-bottom:8px;">ชื่อ-สกุล (care giver) <b>${escHtml(p.cgName)}</b> <span style="font-size:11px;color:#555;">(${p.typeLabel})</span></div>
+    <table style="width:698px;table-layout:fixed;border-collapse:collapse;">
+      <thead><tr style="height:56px;">${th('วัน/เดือน/ปี',76)}${th(escHtml(FACILITY_NAME)+' กิจกรรมการปฏิบัติงาน',316)}${th('ระยะเวลา<br>การดูแล',70)}${th('จำนวนการ<br>ปฏิบัติงาน<br>(ชั่วโมง/นาที)',78)}${th('ลงชื่อ CG',76)}${th('ลงชื่อผู้รับรอง<br>(ตรวจรับ)',82)}</tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    ${last ? `<div style="font-size:11.5px;margin-top:8px;">รวมการเยี่ยม <b>${p.total}</b> ครั้ง &nbsp;|&nbsp; รวมเวลาปฏิบัติงาน <b>${fmtDurationTh(p.totalMin)}</b></div>` : `<div style="font-size:11px;color:#555;margin-top:8px;">หน้า ${p.pageNo}/${p.pageTotal}</div>`}
+    <div style="margin-top:auto;display:flex;justify-content:flex-end;padding-top:6px;">
+      <div style="width:300px;text-align:center;font-size:11.5px;line-height:1.7;">
+        (ลงชื่อ) ..................................................... ผู้รับรอง<br>
+        ( ${escHtml(cert.name || '..................................')} )<br>
+        ตำแหน่ง ${escHtml(cert.position || '..................................')}<br>
+        วันที่ ......... / ......... / .........
+      </div>
+    </div>
+    <div style="text-align:center;font-size:8px;color:#aaa;margin-top:4px;">หน้า ${p.pageNo}/${p.pageTotal} | ${COPYRIGHT_NOTICE}</div>
+  </div>`;
+}
+
+/* Word (.docx) — ตารางตามแบบฟอร์ม ความสูงแถวคงที่ */
+async function dxWorkPage(ctx, p){
+  const cert = STATE.reportCertifiers[STATE.activeCertifierId] || {};
+  const W = [1000, 4500, 1000, 1150, 1200, 1356];
+  const ROW_H = 2000, HDR_H = 1050, sz = 7.5, BC = '222222', ALL = ['top','left','bottom','right'];
+  const cap = Math.floor((ROW_H - 100) / (sz*DX_LH));
+  const hcell = (lines, w)=> dxCell(lines.map(t=>dxLine([{ t, b:true }], 8, { jc:'center' })).join(''), w, { borders:ALL, bc:BC, va:'center' });
+  const rows = [ dxRow([
+    hcell(['วัน/เดือน/ปี'], W[0]), hcell([FACILITY_NAME + ' กิจกรรมการปฏิบัติงาน'], W[1]), hcell(['ระยะเวลา','การดูแล'], W[2]),
+    hcell(['จำนวนการ','ปฏิบัติงาน','(ชั่วโมง/นาที)'], W[3]), hcell(['ลงชื่อ CG'], W[4]), hcell(['ลงชื่อผู้รับรอง','(ตรวจรับ)'], W[5])
+  ], HDR_H) ];
+  p.chunk.forEach(r=>{
+    const items = dxFitLines(r.items.map(it=>({ ...it, runs: it.runs.map(x=>({ ...x })) })), sz, W[1]-160, cap);
+    rows.push(dxRow([
+      dxCell(dxLine(r.date, sz+0.5, { jc:'center' }), W[0], { borders:ALL, bc:BC }),
+      dxCell(items.map(it=>dxLine(it.runs, sz, {})).join(''), W[1], { borders:ALL, bc:BC, mar:[50,80,50,80] }),
+      dxCell(dxLine(r.dur!==null && r.dur!==undefined ? fmtDurationTh(r.dur) : '', sz+0.5, { jc:'center' }), W[2], { borders:ALL, bc:BC }),
+      dxCell(dxLine(fmtClockTh(r.start), sz+0.5, { jc:'center' }) + dxLine(fmtClockTh(r.end), sz+0.5, { jc:'center', before:80 }), W[3], { borders:ALL, bc:BC }),
+      dxCell('', W[4], { borders:ALL, bc:BC }), dxCell('', W[5], { borders:ALL, bc:BC })
+    ], ROW_H));
+  });
+  for(let i=p.chunk.length; i<WORK_ROWS_PER_PAGE; i++) rows.push(dxRow(W.map(w=>dxCell('', w, { borders:ALL, bc:BC })), ROW_H));
+  const last = p.pageNo === p.pageTotal;
+  const half = Math.floor(DX_CONTENT_W/2);
+  const signCol = dxLine('(ลงชื่อ) ..................................................... ผู้รับรอง', 9, { jc:'center' }) +
+    dxLine('( ' + (cert.name || '..................................') + ' )', 9, { jc:'center', before:40 }) +
+    dxLine('ตำแหน่ง ' + (cert.position || '..................................'), 9, { jc:'center' }) +
+    dxLine('วันที่ ......... / ......... / .........', 9, { jc:'center', before:40 });
+  return dxLine([{ t:'แบบรายงานผลการปฏิบัติงานของผู้ช่วยเหลือดูแลผู้สูงอายุที่มีภาวะพึ่งพิง (care giver)', b:true }], 10, { jc:'center' }) +
+    dxLine(WORK_ORG_LINE, 10, { jc:'center' }) +
+    dxLine([{ t:'ประจำเดือน ' }, { t:p.monthLabel, b:true }, { t:' พ.ศ. ' }, { t:String(p.yBE), b:true }], 10, { jc:'center' }) +
+    dxLine([{ t:'ชื่อ-สกุล (care giver) ' }, { t:p.cgName, b:true }, { t:`  (${p.typeLabel})`, color:DX_MUTED }], 10, { jc:'center', after:100 }) +
+    dxTable(W, rows) + dxGap(100) +
+    (last ? dxLine([{ t:'รวมการเยี่ยม ' }, { t:String(p.total), b:true }, { t:' ครั้ง   |   รวมเวลาปฏิบัติงาน ' }, { t:fmtDurationTh(p.totalMin), b:true }], 9, {})
+          : dxLine(`หน้า ${p.pageNo}/${p.pageTotal}`, 9, { color:DX_MUTED })) +
+    dxGap(120) + dxTable([half, DX_CONTENT_W-half], [dxRow([dxCell('', half, {}), dxCell(signCol, DX_CONTENT_W-half, {})])]) +
+    dxGap(60) + dxLine(`หน้า ${p.pageNo}/${p.pageTotal} | ${COPYRIGHT_NOTICE}`, 6.5, { jc:'center', color:'AAAAAA' });
+}
+
+document.getElementById('generateWorkPdfBtn').addEventListener('click', async ()=>{
+  const col = collectWorkReport();
+  if(!col) return;
+  const btn = document.getElementById('generateWorkPdfBtn');
+  const progressEl = document.getElementById('workProgress');
+  const root = document.getElementById('pdfRenderRoot');
+  btn.disabled = true;
+  try{
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    for(let i=0;i<col.pages.length;i++){
+      progressEl.textContent = `กำลังสร้างหน้า ${i+1}/${col.pages.length}`;
+      root.innerHTML = buildWorkPageHTML(col.pages[i]);
+      await new Promise(r=>setTimeout(r,250));
+      const canvas = await html2canvas(root.firstElementChild, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+      if(i>0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297);
+    }
+    pdf.save(`แบบรายงานผลการปฏิบัติงาน_${col.cg.name}_${col.monthLabel}${col.yBE}.pdf`);
+    toast('สร้างแบบรายงาน PDF สำเร็จ','success');
+  }catch(err){ console.error(err); toast('เกิดข้อผิดพลาดขณะสร้าง PDF: '+err.message,'error'); }
+  finally{ progressEl.textContent=''; root.innerHTML=''; btn.disabled=false; }
+});
+document.getElementById('generateWorkDocxBtn').addEventListener('click', async ()=>{
+  if(typeof JSZip === 'undefined'){ toast('โหลดไลบรารี JSZip ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้าเว็บ','error'); return; }
+  const col = collectWorkReport();
+  if(!col) return;
+  const btn = document.getElementById('generateWorkDocxBtn');
+  const progressEl = document.getElementById('workProgress');
+  btn.disabled = true;
+  try{
+    const blob = await buildVisitReportDocx(col.pages, col.monthLabel, col.yBE, (i,n)=>{ progressEl.textContent = `กำลังสร้างไฟล์ Word หน้า ${i}/${n}`; });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `แบบรายงานผลการปฏิบัติงาน_${col.cg.name}_${col.monthLabel}${col.yBE}.docx`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast('สร้างแบบรายงาน Word สำเร็จ','success');
+  }catch(err){ console.error(err); toast('เกิดข้อผิดพลาดขณะสร้างไฟล์ Word: '+err.message,'error'); }
+  finally{ progressEl.textContent=''; btn.disabled=false; }
+});
 
 /* =============================================================
    รายงานข้อมูลผู้สูงอายุ (สถานะทั้งหมด) — ออกเป็น Excel และ PDF
